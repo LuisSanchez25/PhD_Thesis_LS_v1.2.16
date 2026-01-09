@@ -1,0 +1,739 @@
+\section{Using SOM for signal classification in XENONnT}
+
+
+Now that we understand the XENONnT experiment's TPC technology, and its software infrastructure, we can begin to see a path for integrating machine learning. Our goal is to improve our data analysis at a fundamental level. Between the complex detector response to artifacts in our peak reconstruction, the problem of S1/S2 classification is complex. For this, we apply \acrfull{som} to aid in S1/S2 signal classification as well as characterizing the found clusters. The clusters we found in the data may help us understand the detector response and aid in the future development of data quality cuts. The peaklet level is one of the most fundamental stages of our data processing. Without distinguishing signals between S1s and S2s we cannot form events or perform any energy reconstruction analysis.
+
+\subsection{Introduction and Motivation}
+
+XENONnT inherited some of its data processing schemes from its predecessor, XENON1T. Techniques developed in the past contributed significantly to the success of the XENON experiment series, yielding new limits on the WIMP-nucleon cross-section. Building on these foundations, we improved our analysis with upgraded reconstruction algorithms and classification methods to increase our chances of detecting a dark matter interaction. Limitations in our analysis can reduce the acceptance for dark matter interactions, resulting in weaker sensitivity to WIMP-nucleon cross-section interaction or, even the possibility of missing a true WIMP interaction.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/SR1_bkg_s1_vanilla_cls.png}
+    \includegraphics[origin=c, width=8cm]{figs/SR1_bkg_s2_vanilla_cls.png}
+    \caption{Vanilla peaklet classification algorithm results in XENONnT for S1s (left) and S2s (right). There are a few issues with this classification algorithm; we see many peaks with high area fraction top in the S1 figure, which is inconsistent with this kind of interaction. Similarly, on the right we note that the data seems to abruptly cut off at a boundary, which is the case with our current peaklet classification algorithm.}
+    \label{xenonnt_background_cls_problem}
+\end{figure}
+
+%\begin{figure}
+%    \centering
+%    \includegraphics[origin=c, width=10cm]{figs/XENONnT_datastructure_peaks.png}
+%    \caption{}
+%    \label{xenon_peaks_datastructure}
+%\end{figure}
+
+
+Our previous peaklet classification algorithm (vanilla classification) had some limitations based on its method for classifying signals. It involved defining several 2D boundaries in the rise-time, area and area fraction top parameter spaces which are derived from peaklet properties as well as the light distribution detected by the PMT arrays. The benefits of this algorithm lie in its simplicity and ease of interpretability; however, trying to separate complicated n-dimensional data using 2D boundaries often fails to capture the full structure of the data distributions. For example, attempting to separate two intersecting toroidal shapes with planar (2D) cuts is impossible. Using this techniques meant we had to make up for its shortcomings later on in the analysis pipeline through some of our data quality cuts. These challenges motivated the exploration of more flexible approaches, such as using neural networks for signal classification.
+Our approach captures higher-dimensional correlations by examining all relevant parameters simultaneously by organizing prototype vectors in accordance with their similarities and differences. This aids in clustering the data in the n-dimensional space by finding regions where adjacent prototypes in the \acrshort{som} grid have a bigger Euclidean distance compared to the distance between other adjacent prototypes.
+
+The problems mentioned above are not just hypothetical; there are known issues with our previous (vanilla) peaklet classification resulting from these 2D boundaries in the rise time, area and area fraction top space. While our previous classification has a good \acrfull{se} classification accuracy, it can be further improved using more advanced techniques. 
+Misclassified SE may produce  \acrfull{ac} when they are incorrectly paired with an S2, increasing an undesired background and lowering our signal efficiency. These mispaired interactions also mean we lose events with the correct accompanying peak. These misclassifications negatively impact analyses such as $^8$B neutrino detection and WIMP searches. Some low-energy S1s are also misclassified by the previous classification. This becomes particularly apparent when examining $^{37}$Ar calibration data, which produces many low energy S1s, some with longer rise-times, leading to misclassifications. 
+
+% dont think it makes sense to mention rayligh scattering as it would not affect the AFT in a significant way
+Figure \ref{xenonnt_background_cls_problem} highlights some of the flaws in the previous classification. It shows many signals with a high (greater than 0.7) area fraction top are classified as S1s, which is unlikely to be an accurate classification as S1s are produced in the liquid xenon. Light emitted in the liquid xenon can be reflected when it interacts with the liquid/gas interface due to the difference in the index of refraction (1.3770 and 1.0006 respectively). This results in the bottom PMT array typically detecting more than 50\% of the photons emitted by an S1, especially at higher energies.
+This reflection can also happen due to Rayleigh scattering which would have a depth dependence. We also see that the S2 distribution has an abrupt cutoff at around 100\,ns rise-time and above 100 PEs and below 200\,ns rise-time, which we would not expect from a natural distribution. 
+
+
+We improved our S1/S2 classification by utilizing an unsupervised neural network that can distinguish these signals within an appropriate n-dimensional parameter space. Manually defining boundaries in high-dimensional space is difficult, if not impossible, to do by hand, so we rely on neural networks to achieve this goal. Among several available machine learning approaches, we focused on Self-Organizing Maps (SOMs), which are particularly well-suited for this task. This is because SOMs learn and preserve topological relationships of high-dimensional data and maps this information into a lower-dimensional space for interpretability. 
+This allowed us to find clusters in the data, providing insight into the different kinds of interactions that occur in our detector. As such, we adopted an SOM-aided classification method to replace the previous peaklet classification algorithm. In this work, we examine the improvements the SOM-aided classification provides over the previous classifications and evaluate it with both simulations and data-driven methods.
+
+In this chapter, we first focus on SR2, which, for our purposes, has minimal differences from SR1, \acrshort{som} classification result. Then we revisit earlier work (including trials conducted with XENON1T and XENONnT) that informed its design. We also examine a hybrid approach in which \acrfull{svm} are trained on features from the \acrshort{som} neurons to perform peaklet classification in an attempt to streamline the designation of cluster boundaries and the classification results. Finally, we conclude with a discussion of the key insights, their implications for XENONnT data analysis, and how they could inform future dark matter searches.
+
+
+\subsection{SR2 Peaklet Classification}
+
+We trained a  \acrfull{csom} using SR1 data to exploit its higher photo-ionization rate. This helps us better constrain low-energy features relevant for SR2 classification.
+There were no substantive changes in our detector operations in terms of hardware or configurations between these two science runs. As such, there is no reason to believe a priori that the waveform shapes would change between the two science runs, which could affect the classification accuracy.
+Furthermore, from the analysis conducted with our collaborators, we did not find any differences between the waveform properties and distributions between SR1 and SR2.
+In this section, we discuss the data selection and processing, the \acrshort{som} training, and then we will discuss our method for generating cluster boundaries and discuss the resulting clusters.
+
+\subsubsection{Data Selection \& Processing}
+
+We used a varied and balanced dataset, covering all the different types of signals we expect from our detector to train the \acrshort{csom}. We do this because want to find and characterize all the different types of signals within our detector, so we need to train the \acrshort{som} with all expected interaction types which can generate a well-defined model.
+Furthermore, as with any neural network, \acrshort{som}s can interpolate within the feature space covered by its training data but cannot reliably extrapolate to signals with substantially different characteristics.  Because of this, we constructed a data set that contains all the different types of waveforms we expect which is critical for the \acrshort{som} learning.
+We selected 3 calibration runs ($^{83m}$Kr, $^{241}$AmBe, and  $^{220}$Rn) and 1 background run (run\_ids = 49263, 51389, 51487, 53442), and selected 100,000 data points from each. $^{83m}$Kr was chosen as it provides us with a source of S1's in quick succession due to its short decay half-life of 154\,ns \cite{Kastens:2009pa}, which can be used to model double scatters. $^{241}$AmBe and  $^{220}$Rn were chosen as they provide the full energy range of NR and ER recoils. This is because $^{241}$AmBe decays by the emission of an $\alpha$ particle by the Am which is captured by the Be, this results in carbon atom that can be in many excited states and thus emits neutrons at different energies. $^{220}$Rn on the other hand decays into $^{212}$Pb which then decays via beta decay, resulting in an electron with a wide energy range as the rest of the energy is carried by the emitted corresponding neutrino. These sources ensure we see a large dynamic range for this spectrum. Finally, we picked a background run with a high photoionization rate, as we expect this to have some of the hardest SE data to classify due to its wider distribution in the rise-time vs area space compared to other runs. 
+
+From the $^{83m}$Kr we randomly sampled $8 \times10^4$ S2s and $2 \times10^4$ S1s,
+focusing on the characteristic energy range to capture both single interactions and double-decay events typical of this source.
+
+
+We then randomly sampled $2 \times10^4$ S1s and $8 \times10^4$ S2s from the $^{241}$AmBe data set. 
+While selected for NR calibration, this dataset contains approximately 71\% S1 NRs interactions with the remainder being ER background events.
+
+
+With the  $^{220}$Rn dataset, we used all available S1s (33671) as there are significantly more ER signals than NR when looking at background data, and sampled $6.7 \times10^4$ S2s. We chose this sampling as we wanted to capture the full S1 ER spectrum for this data set.
+
+Finally, with the background run, we sampled $10^4$ S1s and $9 \times10^4$ S2s, a summary of this data can be seen in Table \ref{SR2_training_data_distribution}. For this data, we chose to have more S2 representation then in previous samples as the goal of using this data set is to have more SE data for this run with a high photo-ionization rate.
+
+We chose these samplings as opposed to a fully random sampling as the number of S2 interactions far exceeds the number of S1s due to the high rate of SE, which would have left S1s under-represented in our training sample making them harder to learn. Without this approach, S2s outnumber S1s by at least 2 orders of magnitude, making S1s relatively rare and leaving us unable to properly learn the S1 distribution due to low number of interactions. We aimed for roughly a 1:4 ratio of S1's to S2's, except for the  $^{220}$Rn and background data for the aforementioned reasons. For the background data, we did a 1:9 split as we wanted to capture a full picture of the SE distribution during a hot-spot event. 
+
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{cccc}
+    \hline
+          Source & Run ID & Number of interactions & S1/S2 Ratio \\
+         \hline
+         $^{83m}$Kr & 49263 & $10^5$ & 1:4 \\
+         $^{241}$AmBe & 51389 & $10^5$ & 1:4 \\
+         $^{220}$Rn & 51487 & $10^5$ & 1:3 \\
+         Background & 53442 & $10^5$ & 1:9 \\
+         \hline
+    \end{tabular}
+    \caption{Distribution of data used to train the \acrshort{som} for SR2, the run\_ids used for each data type, the number of data points, and their S1/S2 ratio.}
+    \label{SR2_training_data_distribution}
+\end{table}
+
+To make the \acrshort{som} sensitive to waveform shape rather than scale, we apply $log_{10}$ transformation followed by normalization to the deciles and area parameters. This is essential because our data spans six orders of magnitude, and the SOM's Euclidean distance metric would otherwise be dominated by large signals, where even minor variations produce greater absolute differences than substantial variations in small signals.
+
+
+For the deciles, we apply max-value normalization to scale them to [0,1]. The area normalization requires additional steps due to negative values from dark counts so we use the following formula: 
+
+\begin{equation}
+    \text{area}\_\text{new}_i = log_{10}(||min(\text{area})|| +1 +\text{area}_i)
+\end{equation}
+
+we first shift all areas to positive values by adding $|min(area)| + 1$, then we apply $log_{10}$. We then normalize by the maximum of this transformed quantity. The area fraction top (AFT) theoretically ranges from 0 to 1, but dark count artifacts can produce values outside this range, which we clip to [0,1]. This range is not necessary for \acrshort{som} training however we do this to give equal importance to each feature.
+
+These normalization factors (maximum decile values, minimum area, and maximum $log_{10}$(area)) are stored for normalizing new data during \acrshort{som} clustering. The complete normalization functions are implemented in the \textsc{sciSOM} package used for cSOM training.
+
+We decided to drop the first decile as we believe it was not informative and could result in non-optimal classifications. This is because the first decile often contains artifacts of our peak building algorithm which are not useful for classification. This is also reflected in the choice of rise-time for the vanilla classification as one of the parameters as it also ignores the first decile for the same reason.
+
+
+
+\subsubsection*{SOM Training}
+
+
+We used the aforementioned preprocessed dataset to train a \acrshort{csom} and defined initial cluster boundaries. We then refined these boundaries with the aid of various visualization techniques and simulation data, and produced an SOM-aided classification mechanism.
+
+We used an 80×80 \acrshort{csom}, which provided sufficient resolution to capture the fine-grained structure in our 400,000 training samples while maintaining distinct cluster boundaries. This size allowed the \acrshort{som} to develop well-separated regions for different signal types without over-fragmenting individual clusters. We chose to train for $3.2 \times10^9$ iterations based on experience with other SOMs trained on similar data; this is enough time for the \acrshort{som} to fully converge. In the future, training should be stopped in accordance with an \acrshort{som} quality measure as $3.2 \times10^9$ is likely much longer than what is needed for convergence, as the rule of thumb for \acrshort{som} training suggests 10 times the number of datapoints is a good standard. This functionality has yet to be implemented in \textsc{sciSOM}. The training parameters used are indicated in Table \ref{tab:som_peaklet_decay_schedule}, we chose to use a decay schedule instead of a functional decay as it gives us more control over the training. If the \acrshort{som} neurons do not self-organize, meaning neighbors in the grid space are also neighbors in the data space, before the first parameter decay, we can change the training parameters at the beginning of the training schedule to achieve quicker ordering. On the other hand if there are indications the \acrshort{som} did not fully converge we can make the parameters at the end of the training schedule smaller. The specific parameter values were chosen because they have resulted in satisfactory SOMs in the past with similar data. 
+
+We primarily built the first cluster boundaries based on the mU-matrix Fig.\,\ref{sr2_mUmatrix} and examining the average waveforms that got mapped to each region. The goal of clustering is to group data with similar features that belong to the same distribution together and separate them from other groups. We did this with the $\textsc{SOM\_remap}$ functions defined in sciSOM. Some choices in these first iterations were arbitrary as we needed to establish cluster boundaries to start examining the data. We refined the maps by examining the resulting clusters in different physically meaningful parameter spaces, primarily in the rise-time, area and area fraction top. When data seemed clearly out of distribution in these parameter spaces, we identified the neuron(s) representing this data by recalling it with the \acrshort{som} and reclassify them to a more appropriate cluster. 
+Once the responsible neuron is identified we can determine what other data is mapped to that neuron. Here we need to make a choice of whether the neuron is worth switching to another cluster depending on how many data points from each distribution are mapped to it. If we find too many individual neurons who represent data from different distributions, this is usually a sign that the \acrshort{som} did not properly converge.
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[origin=l, width=16cm]{figs/som_sr1b_v2_mUmatrix3.png}
+    \caption{mU-matrix for the \acrshort{som} trained for SR2. The initial boundaries were drawn based on the white fences which indicate distance between adjacent neurons and the lower density regions characterized by the darker colored grid cells. We note that our classification produced a region in the middle left where almost no data was mapped to.}
+    \label{sr2_mUmatrix}
+\end{figure}
+
+The most challenging boundary to establish was the SE vs S1 boundary. This boundary resides at our lower limits of detectable area. Because of this, the signals corresponding to SE and low-energy S1 are more susceptible to noise and artifacts that can change the shape of the waveform and other parameters used for classification. The overlap in these populations is also observed when examining the mU-matrix as it did not produce a clear boundary between S1s and SEs.
+
+To help with this problem we generated simulation data with $\sc{Fuse}$, which has the same basis as $\sc{WFsim}$, to aid us in refining our S1/SE classification boundary in the \acrshort{som} map. We can use this data to fine-tune where the classification boundaries should be by recalling this data with the \acrshort{som} and examining which neurons were activated by each data set. We prioritized the correct classification of SEs over S1s within reason. Meaning that if there is a neuron that has roughly equivalent S1s and SEs matched to it then we would declare that neuron part of the SE cluster. However if we have a neuron which has a significantly higher number of S1s mapped to it when compared to SEs we would designate this neuron as part of the S1 cluster. There was not a hard number associated with this decision for this training. However, one could establish one by choosing what ratio of different classes mapped to one neuron indicated the appropriate classification. 
+
+% This feels like repetition
+As we examined the rest of the clusters, we determined that some needed to be merged due to their similarities in distribution, while others needed to be separated if they did not belong to cohesive statistical group. To assess this, we examined each individual cluster and mapped them into familiar spaces such as rise-time vs area with area fraction top as the color of points. If they were clearly out of distribution within their cluster we looked at the distributions of surrounding clusters in the \acrshort{som} map and reclassify these neurons into the appropriate cluster. Once these clusters were fine-tuned we classified them by their attributes and assign the appropriate label. This process ensures that each cluster overwhelmingly represents one kind of data making them easier to classify.
+Clusters were assigned one of these 4 types: type 0 for undesired waveforms, type 1 for S1s, type 2 for S2, and type 3 for gas events. These are in line with the classifications used in Straxen internally with the addition of type 3 for gas events as we wish to remove these interactions before event building.
+
+To ensure that future SOMs can be trained in my absence, I created my own software package $\textsc{sciSOM}$ \cite{sciSOM2025}with the goal of training \acrshort{csom}s in Python and creating visualizations of this data in a much more limited capacity than $\textsc{NeuroScope}$. I built this package as none of the available \acrshort{som} packages I found on GitHub had a conscience \acrshort{som} module. Furthermore, I found that their use was rather unintuitive for others to use. $\textsc{sciSOM}$ has the capabilities of training either a Kohonen or a conscience \acrshort{som} and has plotting capabilities such as the generation of an mU-matrix. To test this package, I trained a few SOMs using standard datasets and confirmed that resulting \acrshort{som} weight-cubes were within the desired expectations.
+To draw the cluster boundaries, I made a separate image editing package that can take in the mU-matrix, and one can freely draw the cluster boundaries using $\textsc{SOM\_remap}$.
+
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+     Time step & $4 \times10^5$ & $1.2 \times10^6$  & $5 \times10^6$  & $10^7$  & $2 \times10^7$  \\
+     Alpha & 0.7 & 0.3 & 0.05 & 0.01 & 0.005 \\
+     Beta & 0.7 & 0.1 & 0.05 & 0.01 & 0.005 \\
+     Gamma & 5 & 2 & 1 & 0.5 & 0.3 \\ 
+    \end{tabular}
+    \caption{Decay schedule for the different parameters in the cSOM when training for peak classification.}
+    \label{tab:som_peaklet_decay_schedule}
+\end{table}
+
+\subsubsection{Cluster Analysis}
+
+After fine-tuning the \acrshort{som} boundaries, we identified 22 clusters, which can be grouped into six categories: (i) spurious/multi-pulse artifacts, (ii) algorithmic artifacts from peak splitting (S2s), (iii) low-energy S1-like clusters, (iv) main S1 and (v) S2 populations, and (vi) special populations such as gas events. The S1, S2 and gas event cluster are groups we expected to find with the data. Categories (i) and (ii) on the other hand appeared multiple times in separate clusters so we decided to make them their own category. To refer to individual clusters, we follow the numbering scheme shown in Fig. \ref{som_subclusters_sr2}, beginning at the top right with label 0 and proceeding left to right, bottom to top. For another perspective, Fig. \ref{cluster_kde_plots} shows the density distributions of each cluster, which we will reference when discussing the features of each category.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=l, width=0.85\textwidth]{figs/som_population_SR2_final_v2.png}
+    \caption{Rise-time vs Area plots of all the different clusters found in the SOM. They are labeled based on numbers 0 through 21 which we will use to refer to them throughout the text.}
+    \label{som_subclusters_sr2}
+\end{figure}
+
+The identification of these cluster at the peaklet classification level of our analysis can help us reject some interactions before event building. Rejecting some of these subclusters early on helped us reduce the number of AC interactions. Furthermore, doing a cluster analysis of our data can help us characterize the detector and help us understand the different possible signals we can observe. This can help us identify potential problems in our detector as well as observing unexpected physical interactions.
+
+Rejected signals, which we define as type 0, are clusters 8, 12 and 16. These signals primarily consist of a series of pulses rather than one concrete signal from a physical interaction. These clusters should be further explored to understand their relations to PMTs or to understand if particular events in our detector are responsible for these interactions. Our analysis so far indicates that clusters 8 and 16 are mostly single-PMT tight coincidences (80\% and 64\%), while cluster 12 was slightly higher with 57\% two-fold tight coincidences. We define tight coincidence as the number of PMTs that recorded at least a photon within a 50 ns window of the peaks' center; this helps reject signals that consist of two unrelated pulses in one waveform. The very high rates of single-PMT tight coincidence led us to examine the PMT distributions of these interactions to identify any potential PMT malfunction in our detector. We found that cluster 8 had a mostly homogeneous distribution of PMTs while cluster 12 had almost exclusively PMTs on the top array. Cluster 16 on the other hand, had 16\% of all its signals having contributions from PMT number 296, which is more than double than the next highest contributing PMT. This concentration could point to issues with PMT 296, which warrants future investigation.
+
+Low-energy S1-like clusters, were fragmented into 5 parts: 5, 15, 18, 19, and 20. Clusters 5, 15, and 18 are largely distinguished by their area fraction top values, clustered around 0, 0.7, and 1, respectively. In contrast, clusters 19 and 20 show broader area fraction top distributions, prompting us to turn to their waveform shapes for interpretation. Cluster 19 mainly contains standard S1 waveforms with an extra peak at a random point in the waveform, others include interactions that seem like 2 pulses of roughly the same energy. Finally, cluster 20 has very non-standard S1 waveforms patterns and an average area fraction top of approximately 0.5. I do not believe many of these signals would pass an S1 quality cut, so we might want to consider removing this cluster from some analysis as a cut.
+
+Beyond physical low-energy signals, the \acrshort{som} also revealed clusters arising from peak-splitting artifacts, clusters 3, 6, 17, and 21. These clusters all display a consistent pattern; examining their waveforms reveals signals look like SE followed shortly after by an S1. The area fraction top distribution of clusters 3, 6, and 17 all seem consistent with S2 interactions, except for cluster 21, which has an average area fraction top of 0.56. As previously mentioned, when first making peaklets, we apply a Jenks-based peak-splitting algorithm with a low threshold, followed by a recombination step for peaks that should not have been split. These signals seem to suggest that we should make this algorithm a bit more aggressive when doing the initial peak splitting. In the meantime, we classify them as S2s, but future analyses may either refine their splitting or exclude them altogether.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/SR1b_SOM_small_s1_kde.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/SR1b_SOM_small_s2_kde.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/SR1b_SOM_large_s1_kde.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/SR1b_SOM_large_s2_kde.pdf}
+    
+    \caption{KDE plots of different groups of clusters for small S1 (upper left), peak-splitting artifacts (upper right), large S1 (lower left), and S2 (lower right). Further research is needed to understand the difference between the overlapping low-energy clusters. Cluster 1 seems to contain 3 different contours and could have potentially been split into smaller clusters. Clusters 9 and 13 seem to indicate that they also contain some data outside of their distribution. These features should be examined later and assess if we should redraw some cluster boundaries.}
+        \label{cluster_kde_plots}
+\end{figure}
+
+Moving on to our main signal interactions, we begin with high-energy S1s, represented by just 3 clusters: 1, 11, and 14. Based on the KDE plots in Fig. \ref{cluster_kde_plots} these cluster could be subdivided into three regions, possibly corresponding to the two configurations of the $^{83m}$Kr decay chain: two distinct S1 peaks, or a merged peak. This however, was not necessary for our current analysis so we decided not to separate it as they all correspond to $^{83m}$Kr S1s. Clusters 11 and 14 on the other hand, have appeared in many \acrshort{som} studies, and their main difference seems to be their area fraction top. Clusters 11 and 14, which consistently emerge in \acrshort{som} studies, differ primarily in their area fraction top: $\approx$0.5 for cluster 11 and $\approx$0.3 for cluster 14. The most interesting part about this is that these two clusters compose all the high-energy S1 interactions, and there does not seem to be a smooth transition in area fraction top between these two types of interactions. The absence of a smooth area fraction top transition between clusters 11 and 14 is particularly striking and warrants further study. 
+%\textcolor{red}{After giving this a bit more though I think this might be because the calibration source for $^{241}$AmBe was close to the top of the detector, but I don't think that should affect the area fraction top?}
+
+The main S2 population is encapsulated by clusters 2, 4, 9, and 13. By examining Fig. \ref{cluster_kde_plots} we see that clusters 9 and 13 contain data outside their main distribution, suggesting that the cluster boundaries may not be fully optimized. However, we have not seen any negative impact on the classification so far. Cluster 13 contains 98\% of all the single electron interactions, and cluster 9 is largely associated with cathode and anode interactions. Clusters 2 and 4 on the other hand, are hard to differentiate; their area fraction top looks similar. Direct examination of the deciles shows that cluster 2 consistently has higher values across all deciles, even after accounting for differences in area distribution. Whether clusters 2 and 4 represent physically distinct populations remains an open question.
+
+Finally, we highlight a particularly significant cluster: gas S1s. We identified this population as a gas S1s by their elevated area fraction top relative to other S1 signals, and by their waveform shapes matching S1s. Gas S1s arise when particles scatter in the gaseous xenon rather than the liquid, producing an S1 signal above the liquid–gas interface. Light reflections cause the area fraction top of these interactions to be higher. In the next section, we will highlight a small study conducted to confirm that these signals are indeed gas S1s.
+
+In conclusion, by doing this cluster analysis, we were able to classify signals into S1s, S2s, unknown, and gas interactions. We can remove the unknown signals, which aids in potentially improving our even reconstruction. Furthermore, we found signals with unexpected characteristics that, under further studies, could provide insight into our detector conditions.
+
+\subsubsection{Simulation Tests}
+
+We trained the \acrshort{som} directly on detector data to capture the full complexity present in real measurements. Nevertheless, simulation data remains valuable since they provide labeled data with ground-truth which allows us to quantify classification accuracy. We used this simulated data to test for potential biases and identify weaknesses in our classification that may not be apparent from detector data alone.
+
+For this analysis, we simulated approximately 300,000 S1s and 270,000 SEs as this is a large enough sample size to get an accurate classification result that will not be skewed by low statistics. The classification results are shown in Table \ref{som_peaklet_sr1_conf_mat}. Compared to the vanilla method, the SOM-aided classification improved the S1 accuracy from 99.08\% to 99.53\% and halved the number of misclassified SEs. This reduction in misclassified SEs lowers the \acrshort{ac} background, which is important for our low-energy analyses.
+
+
+\begin{table*}[t]
+\centering
+\begin{tabular}{c|c|c|c|c}
+    & \multicolumn{2}{c}{SOM Classification} & \multicolumn{2}{|c}{Vanilla Classification} \\
+    \hline
+    & True S1 &  True S2 & True S1 &  True S2 \\
+    \hline
+    Predicted S1 & 99.53\% & 0.16\% & 99.08\% & 0.3\% \\
+    \hline
+    Predicted S2 &  1.17\% & 99.82\% & 1.71 \% & 99.71\%  \\
+\end{tabular}
+    \caption{Confusion matrices for the \acrshort{som} vs the vanilla classification. Here we mainly examine S1s and SEs as SEs. We note that the SOM-aided classification has a higher classification accuracy and, reduces the number of misclassified SEs by half.}
+    \label{som_peaklet_sr1_conf_mat}
+\end{table*}
+
+We verified that the \acrshort{som} classification does not bias the S1 reconstruction efficiency. We define reconstruction efficiency as the percentage of correctly classify S1s as a function of the number of individually recorded PMT hits.
+We expect the reconstruction efficiency to increase monotonically with signal size. Larger signals are easier to classify as they are more resilient to PMT noise and other factors that can affect the waveform shape. This guided our focus when classifying these signals, which made us focus more on low energy.
+We analyzed the signal acceptance, focusing on the 2-fold and 3-fold tight coincidence channels, since they are the lowest thresholds used in analysis. The 3-fold coincidence is vital for the WIMP search, as it allows us to explore a large range of WIMP masses with signals that are reliable enough for a rare-event search.
+The 2-fold coincidence is used for the CEνENs search, as we expect the neutrino scattering interaction to be close to our lower limit in terms of energy deposition that we can detect. We find no significant difference in reconstruction efficiency between the SOM-based and vanilla classifications, as shown in Fig. \ref{s1_efficiency}, indicating that no reconstruction efficiency bias was introduced.
+
+\begin{figure}[htpb!]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/sr2_s1_2fold_eff.png}
+    \includegraphics[origin=c, width=16cm]{figs/sr2_s1_3fold_eff.png}
+    \caption{S1 efficiency comparison between the vanilla classification and the SOM-aided classification. We find that there is no noticeable difference between the S1 efficiencies in both the 2-fold and 3-fold channels.}
+    \label{s1_efficiency}
+\end{figure}
+
+While we did improve the classification accuracy, some SEs remain misclassified. We examined the population of misclassified SE to understand why they were misclassified. We found that many of the misclassified waveforms contain an additional pulse at the beginning or end of the waveform. Furthermore, the overall shape of these waveforms closely resembles that of S1s, explaining the misclassifications. Understanding these edge cases could help guide future algorithmic development and improve the signal classification.
+
+From these simulation-based testing, we found that the SOM-aided approach improves the signal classification without reducing signal efficiency. We achieved a notable improvement in the reduction of misclassified SE.
+
+
+\subsubsection{Data Driven Tests}
+
+\subsubsection*{Argon Check}
+
+$^{37}$Ar is our lowest energy calibration source, used to characterize our detector for low energy signals. Our previous classification struggled to classify $^{37}$Ar S1 signals with high rise-time as the 2D boundary cut was optimized to minimize SE misclassifications which came at the cost of many misclassified $^{37}$Ar S1 signals.
+In order to examine how the SOM-aided classification performed with this data, we used 51 $^{37}$Ar calibration runs to evaluate its performs with low-energy S1 signals. Note, the \acrshort{som} was not trained with these signals so this is also a test on our ability to classify signals we did not have available during training. We pre-processed this data by applying the $^{37}$Ar calibration cut to our data to get clean S1 samples samples. This way, we can ensure the signal differences or not primarily coming from unrelated artifacts. 
+
+We expect the vanilla classification to misclassify some $^{37}$Ar events because the classification boundary excludes the upper portion of the $^{37}$Ar S1 population in rise-time vs. area space. We can see this in Fig. \ref{ $^{37}$Ar_S1_rt_v_area_hist}, which shows (left) the event level S1 histogram with the SOM-aided classification with contours marking signals the vanilla classification designated as S2s, and (right) the histogram of classification differences. For these plots, it becomes apparent that vanilla classification had many SE interactions just below the classification boundary and missed the S1's above it. To further probe the origin of these differences, we examined the spatial and S1 area fraction top distributions. From Fig. \ref{ $^{37}$Ar_hist_z_aft} we see that the differences arise from shallow interactions with unusually high area fraction top for an S1, which makes them unlikely to be real S1 interactions.  This suggests that the approximately 750 event of the additional S1 candidates identified by the vanilla classification are not true S1s, but rather single-electron signals or small S2 fragments.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/Ar37_sr2_som_v_vanilla.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/Ar37_sr2_som_v_vanilla_diff.pdf}
+    
+    \caption{Left: Histogram showing the distribution of Ar S1 signals with contours drawn for the signals the vanilla classification classified as an S2. As we showed before we expect the previous classification to misclassify a substantial number of Argon S1's with high rise-time due to its classification boundary. Right: Histogram showing the differences in number of events per bin between the two classifications. We see that the vanilla classification has more S1 events right below with vanilla classification boundary and has less events above this line.}
+        \label{ $^{37}$Ar_S1_rt_v_area_hist}
+\end{figure}
+
+
+After applying the $^{37}$Ar cut we see that the vanilla classification yields more events, 130,462 events versus 130,144 events, a difference of approximately 300 interactions. We attribute this difference partly to single-electron (SE) interactions, which produce additional \acrshort{ac}s in the dataset processed with the vanilla classification. In this case the added events are undesirable as they are not the result of a correctly paired S1 and S2. Moreover, we have found no evidence that the SOM-aided classification negatively affect the reconstruction of $^{37}$Ar interactions. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/Ar37_sr2_hist_z_som_v_van.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/Ar37_sr2_hist_s1_aft_som_v_van.pdf}
+    
+    \caption{Histograms showing the depth (left) and area fraction top (right) distribution of the $^{37}$Ar data. We can see that most of the extra events are very shallow and have a high area fraction top for an S1. This leads me to believe that these events are likely not real $^{37}$Ar interactions.}
+        \label{ $^{37}$Ar_hist_z_aft}
+\end{figure}
+ 
+
+However, with the available data, we cannot yet determine whether the S1 signals identified uniquely by the SOM-aided classification, and missed by the vanilla classification, are genuine S1s. This can be determined by simulating $^{37}$Ar and comparing the classification of both methods. Although I did not have the opportunity to perform this study, it will be conducted in the future to to confirm the small percentage of added events are $^{37}$Ar S1s.
+
+\subsubsection*{AmBe Study}
+
+With $^{241}$AmBe data, we performed a fully data-driven study of the NR S1 classification efficiency using the neutron veto. Neutrons from this calibration source may first scatter in the xenon, then bounce back and interact with the water in the neutron veto. The timing of these interactions allows us to tag neutron events in the detector. This provides a way to measure the detector’s response to nuclear recoil (NR) interactions with calibration data.
+
+We find that the SOM-aided classification increased the number of correctly identified S1 interactions while reducing the number of interactions misclassified as S2s. Waveform analysis showed that most of the misclassified events by the vanilla classification were double scatters. This is consistent with what we know of the vanilla classification, two overlapping S1s in a single waveform increases the rise time beyond the S1 threshold, leading to misclassifications. 
+Approximately 72\% of the $^{241}$AmBe interactions were assigned to cluster 11, with the remainder distributed roughly evenly across the other S1 clusters.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+          & SOM-aided classification & Previous Classification & \acrshort{som} - Previous \\
+         \hline
+         True S1 & 2643 & 2625 & 18\\
+         False S2 & 179 & 216 & -37 \\
+         \hline
+    \end{tabular}
+    \caption{Number of $^{241}$AmBe S1's correcly classified by each classification as well as the number of S1's misclassified as S2s. We see that the \acrshort{som} both correctly classified more interactions and had less misclassifications.}
+    \label{AmBe_NR_results}
+\end{table}
+
+In the final stages of data analysis, we must distinguish between ER and NR interactions, depending on the physics channel under investigation. We achieve this distinction by applying selection bands, which serve as cuts to retain only the desired interaction type for further analysis.
+
+One of the primary purposes of $^{241}$AmBe calibration is to map the region in the corrected S1 (cS1) and S2 (cS2) area parameter space where NR interactions are expected, commonly referred to as the NR band. Using 50 $^{241}$AmBe calibration runs, we applied our NR calibration cut and generated the NR band with both the vanilla and SOM-aided classifications. While no significant difference was observed for high energy interaction, we did find an increase in low-energy events with the SOM-aided classification. We were concerned that this increase in events could also result in a broadening of the NR band in the cS1/cS2 space. To check this, we examined the corrected cS1/cS2 space and compared the 1$\sigma$ and 2$\sigma$ contours (Fig. \ref{AmBe_NR_band}). The SOM-aided classification identified 90 more events within the NR band than the vanilla classification, without increasing the associated uncertainty.
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/sr2_ambe_som_van_nrband.pdf}
+    \caption{AmBe NR band made with 50 calibration runs. We compare the vanilla and SOM-aided classification and found an increase of events with the \acrshort{som} classification without affecting the size of the band. We see a slight broadening of the NR band at around 35 PEs in cS1; this is mainly an artifact of the binning used.}
+    \label{AmBe_NR_band}
+\end{figure}
+
+We found that the SOM-aided classification increased the number of correctly identified $^{241}$AmBe interactions. Importantly, this gain does not broaden the NR band, meaning it represents a straightforward increase in correctly classified signals. However, since the difference is relatively small, we do not expect it to have a major impact on our overall analysis.
+
+\subsubsection*{ $^{220}$Rn Study}
+
+After studying neutron-induced nuclear recoils with the $^{241}$AmBe source, we next turn to  $^{220}$Rn calibration data, which we use to construct the ER band. The ER band plays a key role in modeling our background as well as in studies involving electron recoil interactions. As before, we applied the  $^{220}$Rn cuts to both the vanilla and \acrshort{som} classifications and found a 1.05\% increase in selected events, corresponding to 4553 additional interactions. Unlike the $^{241}$AmBe case, this increase did not originate from lower-energy events but instead from higher-energy interactions. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/SR2_SOM_van_Rn220_2Dhist_full_range2.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/SR2_Rn220_carea_hidt_diff.pdf}
+    \caption{Difference of events distribution in the ER band by the SOM-aided classification and the vanilla classification.  Left: we see that unlike with $^{241}$AmBe most of the events not found using the vanilla classification ocure at higher energies. Right: We aim to quantify and understand how different these two classification are by plotting the difference of their histograms. We see that the vanilla classification in particular has a significant increase in events for $log_{10}$(cS1) > 4.5.}
+        \label{ER_band_bipo}
+\end{figure}
+
+We analyzed the events contributing to this increase at $ \log_{10}(cS1) > 4.5 $ to understand the origin of this population. In cases where a large S1 is produced, it can occasionally generate a small photoionization tail. Our previous classification scheme misidentified this tail as the S2s corresponding to the S1s, which caused the event to be removed during data quality cuts. In contrast, the SOM-aided classification assigns these signals to type 0, thereby rejecting the spurious S2 and recovering the true physical event.
+
+We identified the excess of high-cS1 events as BiPo interactions originating from the $^{222}$Rn decay chain. In this sequence, $^{214}$Bi decays to $^{214}$Po, producing a β particle, and $^{214}$Po subsequently decays with a half-life of 164\,$\mu$s. Because this half-life is shorter than the drift-time of the detector, the two signals are frequently reconstructed as a single event. Historically, BiPo events have been exploited to reduce radon-induced backgrounds. Thus, the improved detection efficiency of BiPo interactions provided by the \acrshort{som} classification enhances our ability to tag radon-induced backgrounds \cite{PhysRevD.110.012011}. This should greatly benefit our high-energy S1-only analysis as we obtained a significant boost in the detection of these events. 
+
+\subsubsection*{Fully Fake AC Analysis}
+
+Beyond ER/NR band studies, another important source of background arises from AC events. To study these interactions in a data-driven capacity, we artificially generate AC-like events during data processing. Our event-building algorithm normally requires reconstructed z-positions to lay within the physical boundaries of the TPC. By configuring \textsc{straxen} to double the accepted drift-time window, we deliberately reconstruct events that fall outside the detector volume. Selecting those events with apparent positions below the TPC provides us with a pure sample of ACs for further analysis.
+
+We selected events with drift times between 1.2 and 2 times the maximum TPC drift time. The lower bound of 1.2 is chosen to account for reconstruction uncertainties while still ensuring that the selected sample consists purely of ACs. Because there is no a priori reason to expect the AC rate to differ between this region and the nominal TPC volume, we can use these events to extrapolate the AC rate inside the detector. This approach allows us to quantify how the measured AC rate changes between the vanilla and \acrshort{som} classifications.
+
+For this analysis, we compare three cases: the vanilla classification, the SOM-aided classification, and the SOM-aided classification with the vanilla cut applied, using both $^{241}$AmBe and  $^{220}$Rn data. We define the vanilla cut as ensuring the detected events' S1 is also classified as an S1 by the vanilla classification. As shown in Fig.~\ref{AC_analysis_Ambe_Rn}, the SOM-aided classification consistently yields fewer ACs than the vanilla classification, consistent with expectations from its improved SE classification accuracy. We therefore confirmed that the SOM-aided classification effectively reduced the AC background. This reduction enhances our background rejection capability, improving sensitivity in rare-event searches. If we want to further reduce the AC background, we might consider using the vanilla cut for analysis.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/sr2_fully_fake_ac_ambe_hist.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/sr2_fully_fake_ac_rn_hist.pdf}
+    \caption{Histograms of the AC rate for the SOM-aided classification and the vanilla classification for NR data (left) and ER (right). We also include bins for a cut using the vanilla classification to remove some ACs.}
+        \label{AC_analysis_Ambe_Rn}
+\end{figure}
+
+\subsubsection*{Gas S1 Interactions}
+
+We next examine gas S1s, which are an important source of apparent ACs in the high-energy regime. These events typically manifest by matching two signals, one of which can correspond to a true physical interaction, while the other arises from particles scattering with the xenon gas, producing an S1 in the gas gap. In standard analyses, we apply data quality cuts to remove such events; however, this approach can reduce signal efficiency, as these mismatched interactions result in the whole events being discarded.
+
+The identification of a dedicated gas S1 cluster offers a new strategy for event reconstruction: these signals can be excluded before reconstruction rather than being removed afterward by data-quality cuts. The resulting gas S1 waveforms resemble a standard S1 in its temporal shape but exhibit a significantly higher area fraction top, since the interaction occurs above the interface and part of the emitted light is reflected back. By explicitly recognizing this gas S1 clusters, we gain the ability to separate them early in the analysis chain and thereby improve overall reconstruction efficiency.
+
+To validate that these signals correspond to gas events, we analyzed thorium calibration data. The source for the thorium calibration is positioned near the top of the TPC, this means the emitted particles have minimal obstruction before interacting with the xenon gas. This geometry enhances the likelihood of generating gas events relative to ambient background conditions. Consequently, we expect the thorium calibration runs to exhibit a higher gas-event rate, providing evidence that the cluster we observe indeed originates from gas interactions.
+
+In the thorium calibration data set, we observed a 14\% higher gas-event rate relative to background data, with most of these interactions occurring near the expected physical location of the source. In addition to the standard gas-event population, we identified a new cluster that appears to arise from radiation emitted by thorium interacting directly with the xenon gas inside the PMTs, thereby generating afterpulses. This population is characterized by a higher rise time and distinct area fraction top values, visible as the green points in Fig.~\ref{gas_events_th}. Inspection of the corresponding waveforms revealed a dominant, sharp peak superimposed on significant baseline noise, consistent with afterpulsing behavior. However, these events exhibit systematically lower area fraction top values than the standard gas-event population, leaving the interpretation uncertain.
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[origin=c, width=18cm]{figs/sr2_th_gas_interactions.png}
+    \caption{Gas events distribution with the Thorium source, dashed lines shows the vanilla classification boundary. We see that the area fraction top of these signals is consistent with an interaction occuring above the liquid level. Upon examination of the wavefroms that have the shape of an S1. }
+    \label{gas_events_th}
+\end{figure}
+
+\subsubsection*{Brief Examination of the \acrshort{som} Clusters at Different Data Processing Stages}
+
+We can gain insight about some \acrshort{som} clusters by examining which ones persist through event building and data quality cuts. If a population of subclusters decreases significantly from one stage in the data processing chain to the next, this may indicate that such interactions should be removed before event reconstruction. These \acrshort{som} clusters could then be used either to filter out nonphysical interactions early in the pipeline or to define more targeted data quality cuts, ultimately leading to a more reliable analysis.
+
+We first examine how cluster abundances change between peaks and events, focusing on S1 clusters since S2 peaks can be formed from multiple peaklets. Cluster 7, which is currently classified as S1, becomes much less abundant at the event level, though it does not vanish entirely. After applying data quality cuts, however, almost no S1 peaks from cluster 7 remain in either the $^{241}$AmBe or  $^{220}$Rn data. This suggests that cluster 7 could be reclassified as type 0, which could improve event building since these signals do not pass our data quality cuts. Further work is needed to evaluate the consequences of removing this cluster, but it is notable that these signals have area fraction top values close to 1, a feature highly unlikely for true S1s.
+
+Further examinations of the \acrshort{som} clusters should be conducted to better understand their properties and behavior. Certain clusters may correlate strongly with specific data quality cuts, which could allow us to integrate them into more complex selection strategies. Incorporating such correlations has the potential to substantially enhance the effectiveness of our analysis.
+
+\subsubsection{Summary of Classification performance}
+
+Overall we see that the SOM-aided classification boasts a higher classification accuracy than the vanilla classification without introducing any biases. Furthermore, we managed to reduce the number of ACs and increase the number of events in the NR and ER band. Overall this classification provides small improvements in a number of analysis and we hope these improvements can help derive future discoveries. The biggest impacts of this work might be in the $^{8}$B neutrino search were we should have reduced their main background and in future work involving BiPo interactions.
+
+The \acrshort{som} classification also has the advantage of providing analysists with the subcluster information which could aid in the definition of cuts in the future.
+
+
+
+\subsection{Development History: Lessons from SR0 and Early Experiments}
+
+Now we present a set of early \acrshort{som} experiments that helped us determine key aspects for our final SOM-aided peaklet classification of SR2. These experiments helped us identify many crucial aspects, from feature selection and normalization, to data type and training data selection. We will also discuss different possible avenues of exploration that could be interesting to investigate during future trainings. All of the early \acrshort{som} experiments were conducted using NeuroScope, a software developed by Erzs\'ebet Mer\'enyi and her group to train and analyze SOMs. This software proved very useful and valuable for these experiments due to its many capabilities and functionalities for analyzing SOMs.
+
+
+
+The \acrshort{som} project had many iterations before arriving at the final product we present in this work. We believe these experiments are important to discuss as it can help inform future scientists about related projects they would want to explore and so this knowledge does not have to be ``rediscovered". 
+
+When we first started working on signal classification, we started looking at peaks. This was a natural first step as peaks are more physically meaningful than peaklets which contain many reconstruction artifacts.On top of aiming for a better signal classification, we hoped that the resulting SOM-derived clusters would be related to distinct physical events which could be used for data selection in the future.
+
+
+\subsubsection{Early Inputs \& Lessons Learned}
+
+Many of our early experiments were conducted using simulation data as having ground truth makes it more efficient to search for a good set of input parameters, including the selection of an appropriate input vector. We generated data using \textsc{WFsim}, a package used to generate simulated signals detected by the PMT arrays \cite{wfsim} and \textsc{NESTPY}, a Python extension of \textsc{NEST} (Noble Elements Simulation Technique) which is used to simulate Noble-element energy deposition \cite{szydagis_m_2018_1314669}. Combined, these software can simulate interactions in the detector, from waveforms of arbitrarily fixed energies to the radioactive decay of isotopes. 
+Using simulations provides an advantage for testing unsupervised neural networks as we can compared the results to ground truths. Simulations also give us additional ways to validate our neural networks. 
+We can evaluate how the performance varies as a function of energy, for example, by generating signals across a wide energy range.
+
+
+\subsubsection*{Early inputs}
+
+We experimented early on with different inputs for the SOM. The rise-time of a waveform is one of its most important parameters in determining whether the waveform corresponds to an S1 or and S2. This is due to the relaxation time of the xenon dimers that emit an S1 vs the more Gaussian-like distribution of the light emitted by an S2. Because of this it is one of the derived quantities used in the vanilla classification algorithm. Here we suspected that we could extract more information about the interaction by using more than just the time between the 20\% and 50\% deciles (the rise time). So we focused on encoding the shape of the waveform as the main source of S1/S2 discrimination. From this, we explored using the waveforms and/or area quantiles as inputs with different normalizations applied. 
+
+%\subsubsection*{Methodology}
+
+For this set of experiments, we generated simulated SE, $^{37}$Ar and $^{83m}$Kr data as a main dataset. Using this dataset, we generated different inputs for the \acrshort{som} to determine which one yielded the best results. We trained 40x40 \acrshort{som} for each and labeled grid cells based on their plurality label, which means whether more S1s or S2s were assigned to that grid cell. While this system could be refined, it provided us with a consistent and systematic approach to asses the different sets of inputs.
+
+%\subsubsection*{Results}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/MeanSTD_peaksv3.pdf}
+    \includegraphics[origin=c, width=8cm]{figs/Mean_std_area_decileV2.pdf}
+    \caption{Left: Mean (line) and standard deviation (color band) of S1 and S2 peak waveforms from calibration data, according to the current \textsc{Strax} classification. Shown are only the first 40\,ms of the waveform for ease of visibility and comparison. Right: Mean (line) and standard deviation (color band) of S1 and S2 10\% area decile, according to the \textsc{Strax} classification. S1s and S2s seem distinguishable in this space.}
+        \label{area_deciles}
+\end{figure}
+
+Here, we will discuss some of the results of our experiment to find an adequent set of input vectors. From work with both the SOMs and the Baysian classification \cite{PhysRevD.108.012016}, we determined that a compressed version of the waveform was not as useful for S1/S2 classification as using the area quintiles, although it did produce more insightful clusters. We also determined that the area fraction top was a crucial piece of information for S1/S2 discrimination. We did not get better classification from using 50 quantiles when compared to just using the deciles as we can see from Table \ref{som_diff_inputs_results}. Furthermore, looking at the summary statistics of the decile data for S1s and S2s seems to imply that they should be separable in this space as shown in Fig. \ref{area_deciles}. 
+
+\begin{table*}[t]
+\begin{tabular}{c|c|c|c|c|c|c}
+    & \multicolumn{2}{c}{L1 norm deciles} & \multicolumn{2}{|c|}{L1 norm deciles} & \multicolumn{2}{c}{L1 50 quantiles}  \\
+    & \multicolumn{2}{c}{} & \multicolumn{2}{|c|}{+ $log_{10}$(area)} &  \multicolumn{2}{c}{+ 50 samples  waveform} \\
+    \hline
+    & True S1 &  True S2 & True S1 &  True S2 & True S1 &  True S2 \\
+    \hline
+    Predicted S1 & 96.62\% & 0.04\% & 99.91\% & 0.03\% & 99.85 \% & 0.16\% \\
+    \hline
+    Predicted S2 &  0.38\% & 99.96\% & 0.09 \% & 99.97\% & 0.15\% & 99.84\% \\
+\end{tabular}
+    \caption{Classification results of training SOMs with different input vectors. We determined that the L1 norm deciles + $log_{10}$(Area) produces the best classification results.}
+    \label{som_diff_inputs_results}
+\end{table*}
+
+Many of these early experiments were conducted with XENON1T data; however, we can extrapolate the results found with this data to XENONnT. 
+
+Overall, the key results for selecting feature vectors can be summarized as follows:
+
+\begin{enumerate}
+    \item The L1 normalization provided the best results when compared to no normalization and other norms such as L2 and L-infinity.
+    \item The 10 area deciles provide as much information about the waveform shape as we need for S1/S2 classification, and helps put small and large waveforms on a roughly equal playing field.
+    \item The area fraction top is an important quantity for classification as experiments in which this data was not provided in the input consistently performed worse than their counterparts.
+    \item While not as crucial as the area fraction top the area information is also important as experiments in which we deliberately excluded the area also consistently performed worse Table \ref{som_diff_inputs_results}.
+\end{enumerate}
+
+We decided to exclude type 0 data from our training as these were very hard to distinguish from the signals of interest and made the classification worse. Finding the appropriate parameter space to separate type 0 signals from the rest might prove very valuable as it could also characterize the noise of the experiment. Looking further into this could provide an interesting avenue for exploration, we will discuss this towards the end of this chapter.
+
+\subsubsection*{Peak classification using SOMs}
+
+Even before applying \acrshort{som} classification, certain issues become apparent. In particular, problems arise when examining the argon S1 and single-electron boundaries. As shown in Fig. \ref{peaks_parameter_distributions}, the classification boundary appears to exclude many argon S1s, treating them instead as S2s. This outcome is partly intentional, since misclassified S2s would increase the accidental-coincidence (AC) background, which is especially undesirable.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=7.3cm]{figs/somcls_risetime_c_area_wstraxen_bound.png}
+    \includegraphics[origin=c, width=8.7cm]{figs/somcls_risetime_v_aft_wstrax_bound.png}
+    \caption{Scatter plot of Argon 37 S1's and SE in the rise time vs area space (left) and the rise time vs area fraction top space (right). As we can see from the figure on the left many of these argon S1s would be misclassified as they are above the threshold for the vanilla classification to be classified as an S2.}
+        \label{peaks_parameter_distributions}
+\end{figure}
+
+We selected run 034373 because it contains both $^{83m}$Kr and $^{37}$Ar data, and applied selection cuts to isolate primarily argon and $^{83m}$Kr peaks. To provide a baseline, we also chose a background run and enforced the requirement that no peak within the preceding 10 ms could be of comparable size to the selected peaks. These cuts were designed to obtain clean data samples for classification. However, this approach likely had a negative impact on the experiment: the \acrshort{som} did not have the opportunity to tune itself in the presence of this type of noise. This limitation was addressed in later iterations, where noise handling was explicitly incorporated.
+
+
+We trained a 40×40 \acrshort{som} for 50 million steps; the full set of parameters is listed in Table \ref{tab:som_peak_decay_schedule}. After training, we examined the mU-matrix and CONNmatrix to establish the initial cluster boundaries. We then refined these boundaries by inspecting each cluster and determining whether certain subclusters should be merged. The resulting structure is shown in Fig. \ref{som_gird_w_wf_peaks}. Following this, we labeled clusters as S1 or S2 and further refined their boundaries based on the plurality of labels obtained from the simulated data. While this approach maximized the classification accuracy achievable with the SOM, it did not address our need to minimize misclassified S2s, which are particularly problematic for background rejection. For this reason, we later revisited and adjusted this method.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+     Time step & 50,000 & 150,000 & 500,000 & 1,000,000 & 3,000,000  \\
+     Alpha & 0.5 & 0.2 & 0.05 & 0.02 & 0.01 \\
+     Beta & 0.4 & 0.1 & 0.5 & 0.01 & 0.005 \\
+     Gamma & 4 & 2 & 1 & 0.05 & 0.04 
+    \end{tabular}
+    \caption{Decay schedule for the different parameters in the cSOM when training for peak classification.}
+    \label{tab:som_peak_decay_schedule}
+\end{table}
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[origin=c, width=14cm]{figs/som_cls_with_waveforms_overlaid_cropped_3.png}
+    \caption{SOM grid colored according to the clusters discovered. We mapped the average waveform onto each grid cell to help us determine what kind of interaction is being presented.}
+    \label{som_gird_w_wf_peaks}
+\end{figure}
+
+
+For this set of experiments, we concentrated on the separation of argon S1s and single electrons, as these two populations proved to be the most challenging to distinguish. A summary of the results is provided in Table \ref{last_peak_experiment}. The outcome was encouraging: not only did we achieve higher S1 peak classification accuracy compared to the previous method, but the \acrshort{som} subclusters also enabled us to perform targeted data selection, as illustrated in Fig. \ref{som_peaks}. These clusters successfully separated different event types, such as the M-shell and K-shell argon signals, $^{83m}$Kr S1 and S2 peaks, as well as joint versus isolated peaks. From an analysis perspective, this is particularly valuable because it allows us to identify and study interactions of interest directly from the \acrshort{som} clustering, rather than relying solely on manually designed cuts. Thus, this approach provides both an additional check on data selection and a promising new classification pathway.
+
+\begin{table}
+    \centering
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabular}{c|c|c}
+        & \textsc{Strax} & SOM-aided classification \\
+        \hline
+        $^{83m}$Kr S1 & 97.23$\pm ^{0.07}_{0.07} \%$ & 97.72$\pm ^{0.06}_{0.06} \%$  \\
+         $^{83m}$Kr S2 & 100$\pm ^{0.00}_{0.01} \%$ & 100$\pm ^{0.00}_{0.01} \%$  \\
+         \hline
+         $^{37}$Ar S1 & 92.62$\pm ^{0.27}_{0.26} \%$ & 99.27$\pm ^{0.08}_{0.10} \%$ \\
+         $^{37}$Ar S2 & 100$\pm ^{0.00}_{0.01} \%$ & 100$\pm ^{0.00}_{0.01} \%$ \\
+         \hline
+         Photoionization electrons & $99.17\pm ^{0.08}_{0.10}\%$ & $87.15\pm ^{0.32}_{0.31}\%$ \\
+         \hline
+    \end{tabular}
+    \caption{Classification accuracy and binomial error of S1s and S2s for \textsc{Strax} vs the SOM-aided classification. Results shown used the L1 normalized area decile and $\log_{10}$ area as inputs. The SOM-aided classification method showed comparable results for $^{83m}$Kr data and a 6.65\% improvement in accuracy for $^{37}$Ar S1 data of 6.65\%. }
+        \label{last_peak_experiment}
+\end{table}
+
+
+The SOM-aided classification, however, performed poorly in the single-electron (SE) category. At this stage, we identified clear discrepancies between the SE data and the simulations. This provided an important lesson: the \acrshort{som} should be trained on detector data rather than relying exclusively on simulations. The results also exposed a limitation in the way we computed classification boundaries. While plurality neuron labels are useful when the cost of misclassifying different classes is comparable, our case is asymmetric. Misclassifying SEs produces accidental-coincidence signals, which could mimic dark matter interactions and lead to false positives, whereas misclassifying S1s only reduces the overall signal acceptance.
+
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[origin=c, width=14cm]{figs/som_peaks_risetime_v_area.png}
+    \caption{Resulting SOM-aided classification of peaks shown in the rise time vs area space. We note that as we can see in fig \ref{SOM_v_strax_peaks} that many of the \acrshort{som} clusters correspond to a spesific physical interaction.}
+    \label{som_peaks}
+\end{figure}
+
+The lower SE classification accuracy, however, was not the only issue with our approach. Based on feedback from the collaboration, we concluded that the most promising path forward was to perform classification at the peaklet level. Many waveforms appeared to be mis-reconstructed at a more fundamental stage, which likely contributed to the observed misclassifications. By moving to peaklet classification, we aimed to address these reconstruction issues directly and establish a more robust foundation for subsequent signal classification.
+
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=10cm]{figs/risetime_v_area_straxclsboundaryv2.png}
+    \caption{Rise-time vs area of the resulting \acrshort{som} clustering. Note each group is labeled according to the known physical interactions that caused them. The \textsc{Strax} classification boundary is also shown for comparison. $^{37}$Ar and $^{83m}$Kr are used to calibrate the detectors. photoionization electrons usually result from the photoionization of impurities and materials in the detector. The $\alpha$, $\beta$ and $\gamma$'s are from radioactive materials or elements in the detector. }
+        \label{SOM_v_strax_peaks}
+\end{figure}
+
+From these initial studies, several lessons became clear. First, while the full waveform retains all available information, its use as a direct input to the \acrshort{som} did not provide meaningful improvements in S1/S2 discrimination. The additional artifacts and noise in the raw signals made separation harder, so compressed representations proved more efficient. In particular, the area deciles capture the essential shape of the waveform with far less redundancy, and the inclusion of the area fraction top and area information substantially improved performance. Among normalization schemes, the L1 norm consistently produced the most stable classification results.
+
+Second, although these early tests were performed primarily on simulated data, comparisons with detector data highlighted important discrepancies, particularly in the case of single-electron signals. These mismatches underscored the risks of relying too heavily on simulation and suggested that training directly on detector data would be a more reliable approach. At the same time, the SOM-based method achieved classification performance on par with or better than existing \textsc{Strax} routines for S1s and S2s, most notably improving the accuracy for $^{37}$Ar S1 events.
+
+Taken together, these findings shaped our choice of input vectors and training strategy for the remainder of this work. We concluded that L1-normalized area deciles, augmented by $\log_{10}$(area) and the area fraction top, provide an optimal representation for classification, and that training should be carried out on detector data rather than simulations. With these lessons established, we now turn to the use of SOMs on detector peaklets, where the method can be applied at the level most relevant for physics analyses.
+
+\begin{comment}
+    
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+         Method & SE &  $^{37}$Ar S1 \\
+         \hline
+         Previous classification & 99.51\% & 99.33\% \\
+         SOM-aided classification & 99.91 \% & 99.96\% \\
+         \hline
+    \end{tabular}
+    \caption{Caption}
+    \label{last_peak_experiment}
+\end{table}
+
+\end{comment}
+
+\subsubsection{SR0 Peaklets SOM}
+
+Moving on, the next experiment was conducted using XENONnT data from SR0. Here, we decided to work with peaklet classification instead of peaks as peaklets are used to build peaks and errors in this reconstruction phase from misclassify peaklets can affect the data quality. Therefore, for accurate S1/S2 classification and improved peak reconstruction efficiency, it is preferable to classify data at the peaklet level. This approach comes with tradeoffs: many of the clusters found in the peaklet data may not be as interpretable as the clearly defined clusters seen with peaks. This is because some of the clusters will consist of artifacts of the analysis. Furthermore, we lose the ability to directly tag physical S2 signals when the \acrshort{som} operates at the peaklet level. Despite these limitations, we trained a \acrshort{som} on SR0 data to test whether peaklet-level classification could improve overall signal reconstruction.
+
+
+\subsubsection*{Inputs and training}
+
+We trained the Self-Organizing Map (SOM) using data from a 3-hour background run. No cuts were applied to the data. We used all S1s identified by the previous peaklet classification algorithm and additionally randomly selected a subset of S2s amounting to ten times the number of S1 peaklets. As input parameters for the SOM, we used the ten area deciles, the total area, and the area fraction top of the waveforms. These features capture information already known to be relevant for S1/S2 discrimination (such as risetime, area, and area fraction top), while the deciles provide additional information about waveform shape. In total, 3 million peaklets were used to train an 80×80 \acrshort{som} for 40 million learning steps.
+
+
+All clusters identified by the \acrshort{som} were re-categorized into three types after analyzing key features of the data: type 0 (unclassified), type 1 (S1s), and type 2 (S2s). This resulted in one sub-cluster being labeled as type 0, twelve as S1s, and ten as S2s. To help delineate cluster boundaries, we also used simulated S1 and S2 signals. Since the \acrshort{som} was trained directly on detector data, the training set itself cannot be used to evaluate classification accuracy. Instead, we turned to simulated data to estimate the accuracy of the new peaklet classification algorithm. Beyond accuracy, we also needed to ensure that the new method did not introduce biases or negatively impact peak reconstruction.
+
+\begin{comment}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/bkg_data_classification_straxen_v_som_s1.png}
+    \includegraphics[origin=c, width=16cm]{figs/bkg_data_classification_straxen_v_som_s2.png}
+    \caption{Current peaklet classification algorithm results in XENONnT (left) vs the \acrshort{som} aided classification algorithm(right). \textbf{Top}: Rise-time vs Area classification Illustrates some of the issues with the current peak/peaklet classification, which include the leakage of SE to the S1 classification boundary, as well as the population between 100-150PEs and rise-time between 150 and 200 PEs. On the right we also have the classification using the new method. We see our new classification removes some of the events misclassified as S1. \textbf{Bottom}:  Rise-time vs Area of S2 classification. Here we want to point out the difference in distributions between the straxen and the \acrshort{som} classification. The straxen classification abruptly gets cut off at the boundary where we could be misclassified both cut of tails of S2's which would affect an S2 only analysis as well as single electrons.}
+    \label{xenonnt_background}
+\end{figure}
+\end{comment}
+
+\subsubsection*{Classification Results}
+
+Overall, the SR0 experiments yielded promising results. We achieved a substantial improvement in SE classification accuracy, reducing the number of misclassified SEs to roughly one quarter of the original. This improvement came with a slight decrease in $^{37}$Ar classification accuracy, as our efforts were primarily focused on optimizing SE discrimination. The results are summarized in Table \ref{peaklet_results_sr0}. To validate the new approach, we conducted a series of data-driven tests and simulation-based checks, which showed no indication of unexpected negative behavior from the classification algorithm.
+
+We did, however, observe a surprising number of misclassified $^{83m}$Kr S1s, though not exceeding the rate of the previous classification. We attribute this to the \acrshort{som} not being trained with waveforms containing two S1s during training. Most of the follow-up studies are not discussed here, as they were repeated in the SR2 analysis. Instead, we now turn to the main lessons learned from this experiment.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+         Method & SE &  $^{37}$Ar S1 \\
+         \hline
+         Previous classification & 99.80\% & 98.90\% \\
+         SOM-aided classification & 99.94 \% & 98.64\% \\
+         \hline
+    \end{tabular}
+    \caption{Classification difference for the previous classification vs the \acrshort{som} aided classification on SE and $^{37}$Ar S1 signals. Here we see the SOM-aided classification achieved a higher SE classification at the cost of a lower $^{37}$Ar S1 classification accuracy.}
+    \label{peaklet_results_sr0}
+\end{table}
+
+\subsubsection*{Discussion}
+
+Although the \acrshort{som} classification was not incorporated into the SR1 analysis, this round of training yielded several valuable lessons. We found that some peaklets exhibited non-physical features at the beginning of the waveform, caused by artifacts in the peak-splitting algorithms. To mitigate this, we decided to remove the first decile as an input for future training. We also recognized the importance of including all relevant sources of data during training. In particular, the absence of $^{83m}$Kr events degraded performance in double-scatter and $^{83m}$Kr calibration runs, underscoring the need for comprehensive training sets. 
+
+Our collaborators also expressed skepticism about implementing a neural network trained with closed-source software such as NeuroScope. They argued that this would hinder future analysts from reproducing or extending the SOM, thereby limiting the long-term utility of the method. These concerns were addressed in the final iteration of the SOM-aided classification by introducing a more limited but fully open-source program, \textsc{sciSOM} \cite{sciSOM2025}, which ensured both transparency and reproducibility.
+
+\begin{comment}
+    
+\subsection{Population found in peaklet data}
+
+Now here we get into some of the more discoveries associated with using the SOM. As mentioned before we trained the \acrshort{som} on background data. We found a total of 23 clusters in the data when examining peaklets. As previously mentioned peaklets are aggressively split peaks so we expect some of the populations to be mainly cut of tails of S2's but some still have interesting physics implications to our experiment. Because this kind of classification method is unsupervised, it can be very helpful in the characterization of data for any given experiment. Even within a mature experiment such as xenon we were able to find populations of data that were unexpected to scientists working in xenon.
+
+\begin{figure}
+    \centering
+    \includegraphics[origin=c, width=14cm]{figs/som_peaklets_clusters.png}
+    \caption{Need to include axis labels in this figure}
+    \label{som_clusters}
+\end{figure}
+
+We will not talk about all these clusters exhaustively but we will mention some of the more interesting clusters. The main objective of this project was simply to classify these clusters as either an S1 or and S2 clusters. In order to understand what each population represents we can look at the data clusters in different sub-spaces such as looking at the [[area fraction top]]. There are other powerful tools to try to understand our clusters such as looking at example waveforms of each cluster. The shape of these waveforms can also be affected by the position of the interaction in the detector. Finally, a tool that is also sometimes useful is to look at the resulting hit-patterns of the data.
+
+\end{comment}
+
+\subsection{Alternative Classifiers}
+
+\subsubsection{Vanilla Classification Algorithm}
+
+At a higher lever, the algorithm works as follows, first, all peaks get designated as type 0 (undefined), then it established criterion of what can be considered either a small s1 or a large s1, as assigned those types as type 1. Then we select the peaks that pass the s2 criterion which where NOT designated as type 1 and labels those as type 2. In this way we are left with all peaklets classified as one of 3 types; type 1 (S1), type 2, (S2), or type 0 (undefined).
+
+As a lower level description now we will give detail for each criterion:
+
+\subsubsection*{Large S1}
+
+These items on this list will be applied sequentially.
+\begin{enumerate}
+    \item First select the data whose area is larger than 100\,PEs.
+    \item Select the data who pass the large S1 rise-time threshold.
+    \item Select the data with tight coincidence larger the the large S1 tight coincidence threshold.
+    \item The peaks which survive all of these requirements will be large S1's.
+\end{enumerate}
+
+\subsubsection*{Small S1}
+
+These items on this list will be applied sequentially.
+
+\begin{enumerate}
+    \item Select the data with area less than 100\,PEs.
+    \item Select the data whose Rise time value is lower than the rise-time area boundary (exponential looking curve fitted to the rise-time vs area space).
+    \item Select the data whose Rise time is less than the rise-time vs area fraction top boundary (Fitting a linear function with negative slope which later becomes constant).
+    \item Select the data with tight coincidence larger than the minimum small S1 tight coincidence. 
+    \item Data that passes all of these conditions are labeled small s1's.
+\end{enumerate}
+
+Then all data classified either as a small s1 or a large s1 is labeled as type 1.
+
+\subsubsection*{S2 criteria}
+
+Once again, these conditions are applied sequentially.
+
+\begin{enumerate}
+    \item Select the data where the minimum number of PMTs that detected light from this interaction is higher than the minimum threshold.
+    \item Select only the data that has not already been labeled as an S1.
+    \item The data that passes these criterions is considered an S2.
+\end{enumerate}
+
+This algorithm was used in many generations of xenon experiments; however, it is one which we can improve upon. This method identifies several parameters which can help us determine if an interaction is an S1 or an S2 however, its biggest weakness comes from treating n-dimensional objects, which are all the input parameters and making this separation in 2D spaces. The only parameter we failed to include in the \acrshort{som} training that was present in the previous classification is the tight-coincidence. This parameter might be more useful when helping us distinguish between noise signals and physical interactions however, this is something that was not explored in this analysis.
+
+%review paragraph
+In summary, our \acrshort{som} analysis identified 22 distinct clusters in the XENONnT data, revealing both expected signal populations and unexpected detector artifacts. The key achievements include: (1) identification of spurious multi-pulse clusters (8, 12, 16) that can be rejected early as "type 0" signals, reducing \acrshort{ac} backgrounds; (2) isolation of 98\% of single electron events into cluster 13, enabling precise calibration of our lowest-energy signals; (3) discovery of systematic peak-splitting artifacts (clusters 3, 6, 17, 21) indicating needed algorithmic improvements; (4) clear separation of gas S1 events (cluster 10), a physically distinct population requiring special treatment; and (5) evidence of PMT-specific issues, particularly with PMT 296. These findings demonstrate that unsupervised learning not only improves classification accuracy but also provides diagnostic insights into detector behavior that would be difficult to discover through traditional cut-based analysis.
+
+%While it would be impossible for us draw n-dimensional decission boundary by hand this is something that machine learning algorithms excel at. As such, we will use SOMs to aid clustering this data in the appropriate n-dimensional space and create a more robust classification which gives us better classification accuracy and more information about the different kinds of data which we can expect to observe in our detector.
+
+\subsubsection{SVM studies}
+
+An external reviewer suggested that we explore \gls{svm} to make our SOM-based classification more systematic and reproducible. The motivation was to reduce the amount of manual fine-tuning required to define cluster boundaries, instead assigning this task to a machine learning algorithm. Unlike SOMs, which are unsupervised and primarily used for exploratory clustering, SVMs are supervised classifiers that rely on labeled data. Our intent was not to replace the SOM, but to evaluate whether SVMs could refine and formalize the decision boundaries drawn on the SOM. This approach aimed to reduce analyst-dependent variability in cluster labeling and thereby improve the reproducibility of our classification results.
+
+SVMs are a supervised machine learning algorithm that, like SOMs, partition the data space into clusters. They achieve this by finding hyperplanes that maximize the distance between the nearest data points of different classes \cite{svm_cover}. A key limitation of this approach is that hyperplanes require the data to be linearly separable. However, this can be addressed using the kernel trick, which applies a non-linear transformation to the input data, mapping it into a higher-dimensional space where linear separation by hyperplanes becomes possible \cite{Aizerman67theoretical, Moguerza_2006}. This flexibility made SVMs an appealing candidate for our study, as we wanted to test whether they could systematically refine the decision boundaries drawn on the SOM.
+
+Our use of SVMs was inspired by work from the LEGEND collaboration, who employed Adaptive-Pattern Support Vector Machines (AP-SVMs) for data cleaning \cite{Leon:2024geh}. In their framework, the AP acted as an unsupervised neural network whose output was then refined by the SVM. In our study, this unsupervised role was instead filled by the SOM, which provided the structure on which the SVM was applied.
+
+We trained and optimized an SVM using the feature vectors of the \acrshort{som} neurons. A detailed description of the SVM method, along with the parameter optimization procedure, is provided in the appendix.
+
+After obtaining an optimized SVM, we used simulated S1 and SE signals to compute its classification accuracy, and compared the results with those from the \acrshort{som} and the standard classification algorithm. The outcomes are summarized in Table \ref{svm_result_table}. We found that although the SVM improved peaklet classification accuracy for S1s, it performed worse than the standard algorithm for SEs. Because SE classification plays a central role in achieving our physics goals, future work should focus on strategies that explicitly prioritize SE performance to better align the results with our objectives.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|c|}
+    \hline
+          Classification method & S1 & SE \\
+         \hline
+         Vanilla & 95.85\% & 99.71\% \\
+         \hline
+         \acrshort{som} & 96.29\% & 99.82\%  \\
+         \hline
+         SVM & 99.23\% & 99.26\%  \\
+         \hline
+    \end{tabular}
+    \caption{Classification accuracy for S1s and SEs for the vanilla, SOM-aided and SVM classification. We notice that while the SVM classification had the highest S1 classification accuracy by far, it also preformed the worst for single electrons which could increase our AC background.}
+    \label{svm_result_table}
+\end{table}
+
+We also tested whether training and evaluating the SVM directly on \acrshort{som} neurons could reproduce the classification boundaries identified on the SOM. This, however, was not observed. The wide variability across clusters required human judgment to distinguish which small-scale variations could be ignored and which represented distinct physical features. While the dataset may lend itself to binary classification, reproducing the 21 clusters identified manually on the \acrshort{som} appears to be beyond the capability of the SVM in its current form.
+
+Upon closer examination, we found that many of the S1s identified by the SVM were those with areas below 10\,PEs, as shown in Fig. \ref{s1_svm}. We inspected the waveforms corresponding to these interactions, which were correctly classified by the SVM but not by the SOM, and determined that many of them would not pass the standard S1 data quality cuts. Consequently, it remains unclear whether these additional low-area S1s would translate into an increased number of valid low-energy events. Further studies are required to assess this point.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=14cm]{figs/sr2_s1_sim_hist_som_v_svm_area.png}
+    \caption{Histogram showing the difference in classification for S1's between the SOM-aided classification and the SVMs. We see that the SVMs seem to recover some signals with lower area.}
+        \label{s1_svm}
+\end{figure}
+
+On the other hand, the SVMs performed worse than both the SOM-based and vanilla classifications for single electrons (SEs). While SVMs improved S1 identification, the decline in SE performance is particularly concerning, as it directly affects our background estimation. Examining the distribution of misclassified events in the rise-time versus area plane, we observe that SVM misclassifications span the entire SE parameter space and are not localized (Fig. \ref{se_svm}). In contrast, the \acrshort{som} typically struggles only near the original vanilla classification boundary, yet still achieves a higher overall accuracy.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/sr2_se_sim_som_missed.png}
+    \includegraphics[origin=c, width=8cm]{figs/sr2_se_sim_svm_missed.png}
+    \caption{Single electron misclassifications with the SOM-aided classification (left) and the SVM classification (right). We see both classification have difficulties correctly classifying peakelts close to the vanilla classification boundary. The \acrshort{som} however only misclassified a few signals in this region while the SVM misclassified more and over a wider distribution of rise time.}
+        \label{se_svm}
+\end{figure}
+
+
+
+\subsubsection{Discussion}
+
+While SOM–SVM combinations have been studied before, they are typically applied sequentially: SOMs first cluster the data, and SVMs then classify within those clusters \cite{NguyenL14a, ISMAIL201110574}. Our approach differed by applying SVMs directly to the \acrshort{som} neuron map in an attempt to refine the decision boundaries. In our study, however, SVMs did not outperform SOMs for SE classification. Future work could explore hybrid approaches where SOMs provide the initial cluster structure and SVMs refine boundaries within those clusters. Such a method could leverage the interpretability of SOMs while adding the systematic boundary optimization of SVMs, potentially addressing the limitations we observed for SE classification.
+
+
+
+\subsection{Future directions}
+
+From this work, we have boiled down some of our key insight of producing this kind of classification onto the following:
+
+We summarize the key insights from this classification study as follows:
+
+\begin{itemize}
+    \item Encoding waveform shapes using deciles proved highly effective for signal classification.
+    \item The inclusion of the first decile introduced processing artifacts that degraded classification performance.
+    \item Training data should include all waveform types that differ substantially from background signals (e.g., gas interactions, double scatters, or double decays such as $^{83m}$Kr).
+    \item If S1s and S2s are not separable to the desired degree with an SOM, consider increasing the size.
+\end{itemize}
+
+The SOM-aided classification improved S1/S2 signal discrimination and enabled the removal of nonphysical signals before they entered event building, thereby reducing the risk of losing genuine events. This approach is expected to enhance high-energy ER analyses by improving event reconstruction. Although the gains for low-energy NRs were modest, they may still provide a benefit for WIMP searches; whether this improvement will be statistically significant remains to be seen. Furthermore, ACs constitute the dominant background in our neutrino search, and their rate was successfully reduced with this classification.
+
+Future experiments, such as XLZD, can use the packages developed in this work to build their own \acrshort{som} for efficient detector signal characterization and early identification of potential issues. This application will be further illustrated in the next chapter, which focuses on the XAMS detector.
+
+Further improvements could be made, particularly in refining the designation of cluster boundaries, which remains a key limitation for classification accuracy. We explored several automatic approaches to this problem, but none yielded satisfactory results. Another promising direction could be the use of multiple classification methods combined in a voting scheme, as different techniques provide complementary strengths. However, the computational demands of such an approach may limit its practicality for large-scale analyses.
+
+%We ran a series of experinment with different input vectors using XENON1T data in order to see what kind of input was optimal for the purposes of peaklet classification. One of the primary descrimination factors we use to detemine wether a signal is an S1 or an S2 signal is what time between the 1st and 5th area decile of the waveform, we refer to this quantity as the rise-time. As such we know some sort of area quantiles or deciles might be important to use for the input vectors. When examining the waveform by eye we can usually tell which singal is an S1 or and S2 depending on the shape of this signal. Another quantity that we would like to incorparate is some sort of spation information of the wavefroms, as we know S2 signals are more localizing spatially than S2 signals and are mostly seen by the top PMT array. A crude indication of the second quality is the area fraction top (or area fraction top), which is the fraction of the area seen by the top PMT array divided by the total area of the waveform. Using this quantity we can encode some spatial information into our signals. As such we made 3 experiments, one using the wavefroms compressed down to 50 samples per wavefrom + 50 area quantiles. This experiment provided the best classifiation of the different physical interactions we see in our detectors via the obsrved resulting cluster found from the \acrshort{som} classification. We also used the 10 area deciles + the area fraction top which provided the worse results of the two methods. Finally we used the deciles + area + area fraction top of the wavefomrs. This resulted in the best results in terms of peak classification and as such with combination of parameters is what will be used for the rest experiments moving forward.
+
+%\subsection{Peak Classification}
+
+%For peak classification we used a 30 minute run containing both $^{83m}$Kr and Argon calibration data (talk about the different calibration sources on the background section, mainly Kr, Ar, Radon and maybe YBe?)
+
+
+%\subsection{Peaklet Classification}
+
+%In order to also improve our merged S2 reconstruction we applied the SOM-aided classification method at the peaklet level. This was done in SR1 where the detector conditions were different from SR0 by having a higher liquid level in our detector and a lower anode voltage. For this project, we trained directly on background data as this data would be the most in-line with the conditions we would see in our detector. As before we used the deciles + area + area fraction top of the wavefroms as input vectors. We added to the deciles and area the absolute value of the minimum of each element + 1 to ensure 1 was the minimum value as we then proceeded to take the log of these values.
+
+%some of the peaklet classification. We had many signals that should be classified as either junk or S2 being classified as S1's. While the cause of these issues is unknown we know that the misclassification of these signals could negatively impact the analysis. These issues however can be stated as 3 separate issues. Single electrons leaking past the S1 classification boundary (effectively treating these signals as S1's), junk interactions of cut off tails due to issues in the clustering which are being classified as S1's, and finally a population of signals that should be S2's below 200 ns risetime and above 100 PEs. Furthermore, we have known since SR0 that the classification boundary we established misclassified some of the  $^{37}$Ar S1's as S2's due to a section of this population overlapping with the SE region. We aimed to address all of the above issues and provide a solution via the reclassification of peaklets using a Self-Organizing Map trained on background data runs.
+
+%To train this \acrshort{som} we had the handle the data selection a bit differently. Normally we would use samples in accordance to the distribution of the data, for example if there were 3 times more S2's than S1's we would use a training set that was a 3:1 ratio of the two. However this would not work at the peaklet level since there are significantly more S2 peaklets that S1s. As such we used all S1's in the provided data set and 10 x (# of S1's) for the S2 peaklet datasets so the S2 peaklets did not completly drown out the S1's.
+
+%We used a 80x80 cSOM and trained it for 30 million iterations. We then made an initial guess regarding the classification boundaries in the \acrshort{som} lattice space using the mU-matrix and the CONN graph as general guides, (explain both of these visualizations in the \acrshort{som} section). We next simulated some S1 and S2 wavefroms in a continious energy spectrum, as well as single electrons, to help us determine where the cluster boundaries lay, this is very helpful as a guide to determine some of the smaller details of the cluster bondaries as well as helping us understand potential outlaiers. After these steps and finding all clusters I then examine each cluster, one bu one, to help me understand what kind of data am I looking at and weather we see S1 or S2 signals in said cluster. We do this by examining the data in our familiar rise-time vs area space and using the area fraction top in a color bar, we also examine random sample wavefroms as well as the hit-patters (the total ligher seen by each PMT) to determine what kind of signal we are looking at. In total we found 23 subpopulations, which we then classified into 3 groups, type 0 (junk), type 1 (S1), type 2 (S2). In total 12 of the subpopulations were classified as S1's, 10 of the subpopulations were classified as S2's and 1 as type 0.
+
+%This time we intended for the \acrshort{som} classification algorithm to be incorparated into the main XENONnT pipeline in straaxen, as such we inserted a new peaklet classification plugin where the previous one was using the resulting \acrshort{som} network. What this does is that it separates the peaklets the straxen plugin considers an S1 or and S2 and processes those peaklets through the \acrshort{som} algorithm, while the peaklets of type 0 get ignored and are still treated as type 0 by the \acrshort{som} classification. Data given to this pluggin get recalled by the \acrshort{som} plugin and are classified into 1 of the resulting 24 subpopulations, then each of these subpopulations are classified as type 0, 1, 2 or 3. This data is then passed on to the merge S2 and peaks plugins
+
+
+\newpage
+
+

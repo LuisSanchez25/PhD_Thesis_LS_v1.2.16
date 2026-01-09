@@ -1,0 +1,369 @@
+\section{Software Infrastructure in the XENONnT Experiment}
+\label{sec: Software_Infrastructure}
+
+The processing of XENONnT's petabyte-scale data requires sophisticated software infrastructure that enables both standard analyses and novel classification methods. This chapter describes the computational framework that made our \acrfull{som} implementation possible, detailing how we integrated machine learning approaches into the existing pipeline while maintaining the collaboration's requirements for reproducibility and performance.
+
+The XENONnT experiment collected $\approx1.9$\,PB of data in the first two years of operation, bringing us to an average of almost 1\,PB per year \cite{tda_Aprile_2023}, making large-scale software infrastructure a necessity for our experiment. Furthermore, robust software infrastructure reduces the computational overhead associated with debugging and resolving software issues, maximizing the time analysts spend on physics analysis. Adequate software infrastructure also plays a critical role in ensuring reproducibility, an essential part of scientific research.
+
+\subsection{Introduction}
+
+%\subsubsection{Motivation}
+
+Modern high-energy physics experiments rely on complex and large-scale software infrastructures to manage their increasing data volume and analytical complexity. This is particularly important in medium to large-scale experiments, which require sophisticated tools and scalable infrastructure to process complex scientific data \cite{jacobs2025whitepapersoftwareinfrastructure, Clemencic_2017, HEPSoftwareFoundation:2017ggl, agapopoulou:hal-05018428}. 
+
+
+%\subsubsection{Data complexity}
+
+The data categories are largely separated into low-level, peak-level, and event-level data. Each of these types of data requires sophisticated processing techniques to address the goals and challenges at each step. After collecting low-level PMT signals, we need to combine them into peaks. Individual PMT signals need to be integrated in time to form peaks. Ideally, each peak would correspond to one physical interaction, but ensuring this often requires more data processing. This is done by applying recursive peak splitting algorithms and recombining some signals when necessary. From each peak, we extract properties such as area, width, and timing, which are used in event building and energy reconstruction. These corrections are dependent on time-varying detector conditions which can change gradually or abruptly due to calibration runs and environmental or operational changes that impact detector response. 
+
+%\subsubsection{software solutions}
+
+To face these challenges, the XENON collaboration has built its own set of software packages to address issues like data processing and condition data management, and uses existing software such as Rucio to handle data transfers.
+
+The core of the XENONnT software infrastructure consists of Strax, Straxen, and several supporting packages such as Cutax and xedocs. These software packages were built with heavy consideration towards collaborative software development. Strax(en) has extensive documentation that can be found here \cite{strax_main, straxen_pipeline}. These software are highly modular, plugin-based pipelines designed for quick and reliable data processing and ease of interoperability for future developers. Reproducibility is a fundamental requirement in any scientific experiment, but it is particularly challenging in large, evolving software environments like XENONnT. For that, we developed a system of lineage hashes to ensure that data sets processed with different configurations would not be confused with each other.
+
+
+Changes to the data processing pipeline are implemented by creating new Python classes or plugins to compute specific features, corrections, or physics quantities. To ensure the integrity of our codebases, we require all code changes must be reviewed and approved by at least one other analyst via GitHub pull requests. We make our software stack maintainable through documentation and encourage the reuse of code, two of the most important qualities for scientific software development \cite{ARVANITOU2021110848}. Major changes to the code are also discussed in a dedicated group meeting for those working in the computing infrastructure in XENONnT, known as Team A. We also encourage members of different groups within the XENON collaboration to take on some computing tasks to try to lift the burden of those working in computing.
+
+In the following sections, we first introduce the XENONnT data flow pipelines. We then describe the core software tools, data processing schemes, and metadata management strategies. Finally, we discuss our data storage infrastructure and propose improvements for future scalability.
+
+\subsection{Data flow pipeline}
+
+%\subsubsection{DAQ and Raw Data Collection at LNGS}
+
+
+To manage the distribution and cataloging of raw data beyond LNGS, we rely on the Rucio, a data management system originally developed for ATLAS but now adopted in many major particle physics experiments \cite{Barisits_2019}. We primarily interact with Rucio through a XENON-specific interface called Admix. 
+
+Admix is a Python middleware that provides experiment-specific abstractions, including automated MongoDB synchronization, safety-enhanced data operations and specialized template systems for data organization. Admix also provides some important advantages such as two-fold data verification before operations, automatic backup validation and it seamlessly integrates with XENON's existing MongoDB run database. Admix initiates the data distribution to further worldwide distributed \acrfull{rse} for data storage. Once the data have been uploaded to the buffer disk for Rucio distribution, a copy is also archived to tape storage, which is isolated from the distributed RSEs. The meta-database of runs is updated with the RSE information by Admix when a data transfer is fulfilled \cite{Ahlin_2019}.
+
+
+Most of our data processing is done via the \acrfull{osg}, which provides the distributed computing foundation for XENONnT's computational needs. This infrastructure delivers over 1.2 billion CPU-hours annually across 100+ sites, with HTCondor-CE serving as the primary job gateway \cite{osg_htc}. 
+
+We interact with OSG via the \acrfull{rcc} at the University of Chicago, which provides high-performance computing via Dali, midway2 and midway3. Dali will be decommissioned in the near future; however, we currently use it to store peak-level data. Midway2 on the other hand delivers 16,016 cores across 572 nodes \cite{uchicago_rcc_hpc} while Midway3 offers over 10,100 cores plus GPU resources and accelerators \cite{uchicago_midway3}.
+
+The raw data from our PMTs is processed by our \acrfull{daq}. 
+Our DAQ is a triggerless system that reads out the PMTs from all 3 detector subsystems and, thanks to custom-developed software, live data is available within $\mathcal{O}$(10s) of the readout 
+and stored on a 50\,TB disk at LNGS \cite{tda_Aprile_2023}. The data the flows from LNGS through the Strax processing pipeline, with Admix managing automatic upload to our distributed storage and enforcing rule-based replication. A copy of the data is written to a second buffer disk, which serves as a Rucio Storage Element (RSE).
+This allows for continuous data taking in case of a network issue, preventing the data from being transferred to the external storage. This pipeline and data distribution enables all our collaboration members to access the data efficiently while maintaining strict data integrity standards.
+
+%\subsubsection{Low-Level Processing on OSG and intermediate data handling}
+
+Low-level processing begins once raw data are registered in the Rucio catalogue and available at a recognized RSE. These raw files, which contain digitized PMT waveforms from all detector subsystems, are the primary inputs to the first processing stage. These data are processed using the OSG, running computationally intensive algorithms to identify and classify peaks, compute low-level features, and apply initial calibrations. The resulting intermediate data products are collected at the dCache storage facility in Chicago, then transferred to the Research Computing Center (RCC) at chicago via Admix using the underlying scp transfer mechanism. Because these intermediate files are rarely used directly by analysts and serve primarily as a bridge to high-level data products, only the latest versions are stored in Dali and tracked through the Rucio catalogue. The metadata database is updated accordingly with the new file locations \cite{Ahlin_2019}. 
+
+High-level data processing builds on the outputs of low-level processing to generate events and compute derived quantities that depend on those events. These data are moved to analysis-specific directories within the RCC storage system, where they are directly accessible to analysts \cite{Ahlin_2019} via the Midway2 and Midway3 machines. Admix is used to manage uploads and downloads between all of our data storage sites, facilitating data movement between distributed storage locations and the local cluster. This stage marks the final step in the data pipeline, producing analysis-ready datasets that serve as the foundation for physics results.
+
+% Need to work on the order of things in this section.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/software/xenon_data_stream.png}
+    \caption{Data flow from production at LNGS to the metadata storage and data storage, including high level processing with OSG. Data from the DAQ is sent to Disk at LNGS for temporary storage where the rucio servers aid us in their distribution. The metadata produced along with this files is stored at the RunDB, all other data is distributed amonst storage sites contributed by different institutions collaborating in our experiment. For the UChicago machines we initiate the data processing and the resulting data is stored at UChicago in the Dali and Midway machines. A copy of all of our raw data is stored in tape at CNAF for long term storage.}
+    \label{fig:xenonnt_dataflow}
+\end{figure}
+
+\subsection{Core Software Components}
+
+One fundamental difference that makes the XENON software stack stand out is that it is one of the first to be written in Python for a large physics collaboration or experiment. Traditionally, languages like C, C++, and FORTRAN are used for their optimized speed in comparison to higher-level languages. While Python is not traditionally known for speed, optimized libraries and modern techniques have narrowed the performance gap with compiled languages. We describe these optimizations in detail in Section~\ref{sec:optimization}. Using Python also helps address a major challenge in scientific software development: managing and maintaining large, evolving codebases. Python’s user-friendly syntax and high-level abstractions make it easier to learn and use than most traditional languages \cite{ARVANITOU2021110848}.
+
+Our main software infrastructure focuses on the Python packages Strax, Straxen, and Cutax. Straxen extends Strax with experiment-specific functionality for XENONnT, while Cutax builds on Straxen to implement common data selections. These packages expose a plugin-based framework that allows users to flexibly define and run data processing pipelines. From the user side, they primarily work by establishing a \textit{context}, which registers the storage for both data and metadata, registers plugins, and connects it to processors (Fig. \ref{strax_context}). The context abstraction enables modular and reproducible workflows by encapsulating all relevant inputs and settings for a given processing task. A \textit{context} also has all the information needed to establish the lineage of a particular data type, which ensures we do not mix up data processed with different plugin configurations or code versions.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/software/strax_context.png}
+    \caption{In our core software infrastructure a user defined a contexts which registers the storage and plugins that will be used for processing. When data is generated using the context the processor utilizes the plugins for processing and uses the loader to access data from out corrections database needed to generate the desired outputs. A saver function then stores the data in disk for the user to access, image credit \cite{aalbers2018strax}.}
+    \label{strax_context}
+\end{figure}
+
+
+\subsubsection{Strax}
+
+\begin{comment}
+    
+\begin{itemize}
+    \item Streaming analysis framework. Efficiency and scalability
+    \item Plugin-based design for data processing.
+    \item Data types: records, peaklets, peaks and events. Also talk about data types vs data kinds.
+    \item Talk about context and storage.
+\end{itemize}
+
+\end{comment}
+
+Strax is an analysis framework designed for processing pulse-only digitized photomultiplier tube (PMT) data, specialized for live data processing at speeds of 50-100\,MB(raw)/core/sec \cite{strax_main}. As the experiment expanded and the rate of data increased, the previous processor pax \cite{pax_xenon1t} became insufficient to meet these needs. As a result, Strax was developed as a general framework for this kind of analysis. To achieve the required performance improvements, Strax leverages NumPy structured arrays and Numba for just-in-time (JIT) compilation, which together achieve a performance improvement of 100x compared to interpreted Python \cite{strax_main}. 
+
+\subsection*{Performance optimizations (numpy/numba)}
+\label{sec:optimization}
+
+NumPy is a Python package for scientific computing. It enables vectorized operations, which replace explicit Python loops with efficient array-level computations implemented in optimized C code. This enables quick and efficient array computations and matrix operations. NumPy supports multidimensional arrays and derived objects such as masked arrays, which allow for conditional computations and other routines for quick operations on these objects. Furthermore, NumPy arrays are stored in contiguous blocks of memory, which allows for efficient indexing and better CPU cache performance \cite{numpy_docs}. In practice, this means we can perform operations over waveforms, which are 200-element arrays, and compute derived quantities for a set of interactions with better efficiency than using loops. Given the scale of data processed in XENONnT, optimizing performance with NumPy is essential to keep analysis pipelines efficient and scalable.
+% Might need more details on numpy
+
+While NumPy optimizes array operations, Numba addresses Python's computational limitations through just-in-time compilation. This complementary approach enables a number of optimizations for Python code that make compatible functions compute at speeds comparable to compiled languages such as C/C++, examples of this can be seen in \cite{murillo_numba_vs_c, fua2020comparingpythongoc}. Numba achieves this due to its following properties:
+
+\begin{itemize}
+    \item Just-in-time (JIT) compilation. Unlike static compilation, where a program is compiled before execution, JIT compilation compiles code at runtime, just before it is executed \cite{history_of_jit}, leading to significant speed boosts of the program.
+    \item Numba uses Low-level virtual machine (LLVM) as an intermediate representation of the code on which optimizations can be performed before things are translated to machine code \cite{murillo_numba_vs_c}.
+    \item Bypassing Python type checking. The features that make Python easy to use—such as dynamic typing—also contribute to its slower execution. In Python, we do not have to declare the data types. This makes Python very flexible, but it also makes it so we do not have code optimized to a particular data type. Additionally, Python code has to constantly check data types to ensure operations are valid. With numba, we declare and specify a data type, which enables us to bypass checks and use more optimized code when translating it to machine language for execution.
+    \item Bypassing the Python Global-Interpreter-Lock (GIL), which makes it so that only one computer core can handle operations. This is done as a safety precaution and so that users do not need to deal with memory locations, unlike other languages. By releasing the GIL, we can access multithreading, enabling parallel execution of loops across multiple threads.
+\end{itemize}
+
+In Strax, we use Numba to accelerate computationally intensive tasks such as baseline computation in raw\_records and efficient chunking of waveform data for storage. These optimizations are critical for maintaining real-time processing capabilities given the volume of data produced by XENONnT.
+
+\subsection*{Parallelism and memory layout}
+
+Memory access latency and bandwidth limitations are often major bottlenecks in data-heavy pipelines \cite{memory_wall1995}; as such, this aspect was also addressed when transitioning from PAX to Strax. In Strax, we transitioned from object-oriented data structures (such as dictionaries and custom classes) to an array-oriented programming model. This allows us to saturate the memory bus to the CPU cache, drastically reducing the time spent in moving memory, thus making data analysis much quicker. Using structured arrays enables faster data access and caching, typically one of the slowest aspects of high-energy physics analysis \cite{Pivarski_2018}. By taking advantage of numpy structured arrays, the data does not need to be constantly copied, and instead we can use views and references. This minimizes memory movement, and takes advantage of SIMD vectorization, and allows the CPU caches and prefetchers to be fully utilized, leading to saturation of the memory bandwidth.  Furthermore, having objects for each interaction presents a problem for data analysis, as fetching data from objects requires nested functions/protocols. We can see an example of the difference in computation speed by looking at the computation rate for CMSSW [tab \ref{tab:HEP_query_systems}] where we can see that analyzing the full framework of an event is 6 orders of magnitude slower than direct operation on arrays. This can be likened to optimizing a shuttle service: maximizing the number of passengers per trip and avoiding redundant back-and-forth trips reduces overall travel time. 
+
+To quantify these improvements, PAX achieved processing speeds of $\mathcal{O} (\SI{100}{kB/s/core})$, while Strax can process data at rates of $\mathcal{O} (\SI{100}{MB/s/core})$ \cite{tda_Aprile_2023}.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{c|c}
+         0.018 MHz & full framework (CMSSW, single-threaded C++) \\
+         0.029 MHz & load all 95 jet branches in ROOT \\ 
+         2.8 MHz & load jet pT branch (and no others) in ROOT \\ 
+         12 MHz & allocate C++ objects on heap, fill, delete \\ 
+         31 MHz &  allocate C++ objects on stack, fill histogram \\ 
+         250 MHz &  minimal “for” loop in memory (single-threaded C) \\ 
+    \end{tabular}
+    \caption{Rate of processing a payload of filling one histogram of jet pT for all jets in a tt¯ sample at CMSSW. Table illustrates the orders of magnitude of time lost to providing a full framework for heavy event processing, all single-threaded \cite{Pivarski_2018}.}
+    \label{tab:HEP_query_systems}
+\end{table}
+
+\begin{comment}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=14cm]{figs/software/speed_comparison_numba_c.png}
+    \caption{Comparing computing speeds for python, python + numba and C++ applied to simple cellular automata (CA) models. This is meant as an example to illustrate general trends seen in the literature and not as an exhaustive figure. Img credit [https://murillogroupmsu.com/numba-versus-c/]}
+    \label{numba_speed}
+\end{figure}
+\end{comment}
+
+\subsubsection*{Plugin based design}
+
+One of the key architectural choices behind Strax is its plugin-based design, which contributes significantly to its scalability. This decision was motivated in part by historical factors: many collaborators in the XENON experiment were already familiar with this modular structure. Moreover, the plugin model aligns well with the collaborative nature of the experiment, enabling individual developers to work independently on specific components without requiring extensive coordination. This mirrors Conway’s Law, which states: “Any organization that designs a system will produce a design whose structure is a copy of the organization’s communication structure” \cite{conway_committees, conway_law}. In XENON, communication often takes place within smaller subgroups, each responsible for a particular aspect of detector performance or analysis. The plugin architecture reflects this organizational structure by allowing distinct contributions to be integrated smoothly into the larger data processing pipeline.
+
+Technically, each plugin in Strax is implemented as a Python class that defines how a particular data type is produced or transformed. These plugins can be easily added to the processing pipeline by registering them in a context, allowing new functionality to be introduced with little or no modification to existing code. Plugins are designed to be flexible: they can accept multiple inputs and produce multiple outputs, while adhering to required data kinds that preserve compatibility and data integrity. This flexibility is essential in situations where the output arrays are structurally incompatible—such as when producing both scalar metadata and per-interaction quantities from the same inputs \cite{strax_plugin_dev}.
+
+
+\subsubsection*{Data Kinds and Data Types}
+
+Strax has several base plugin classes, designed for specific uses; a full list of such plugins can be found here \cite{strax_plugin_dev}. To ensure consistency and interoperability across the data pipeline, each Strax plugin follows a standard interface. All plugins must define four main components, which are standard attributes of the plugin class:
+
+\begin{itemize}
+    \item \textbf{Depends\_on}: Indicates which plugin data the current plugin needs to perform its function.
+    \item \textbf{Provides}: Indicates the data kind that is generated by this plugin, which others can depend on.
+    \item \textbf{Compute}: Main function that performs all the calculations needed to generate the desired data types.
+    \item \textbf{Data Types}: Defines the structure of the data produced by the plugin, including field names, data types (e.g., float, int), and human-readable descriptions for each field.
+\end{itemize}
+
+Plugins are responsible for producing and transforming specific outputs referred to as data kinds, such as `records', `peaklets', and `events'. These data kinds serve as the building blocks of the data pipeline, and we will discuss them in more depth in the Straxen section.
+
+
+Retrospective analysis of the development process, based on systematic feedback from XENON collaborators, identified key architectural decisions that merit reconsideration, such as the use of standard libraries for the parallelization instead of building our own scheme. This choice introduced significant complexity, requiring analysts to spend substantial time resolving parallelization issues, efforts that could have been directed toward physics analysis. This is particularly unfortunate given that standard libraries such as Dask \cite{dask_docs} and PySpark \cite{spark_python_api} were already available and specifically designed for these kinds of tasks.
+
+\subsubsection*{Reproducibility}
+
+To ensure reproducibility, we developed a system of lineage hashes that distinguish between data sets processed under different configurations. Each data file includes a unique alphanumeric identifier, known as the lineage hash. This hash will change based on several factors such as:
+
+\begin{itemize}
+    \item The plugin configuration, such as the name of metadata files used to compute properties in the plugin.
+    \item The state of the \textit{compute()} function for the target plugin. If the \textit{compute()} function is changed in any way, this will affect the hash.
+    \item Changes to the ancestry of the plugin (plugins that the target plugin depends on).
+    \item Modifications to any helper functions used in the plugin’s computation.
+    \item Name changes of the strax/straxen datatype.
+\end{itemize}
+
+This hashing system ensures that any change to the data processing pipeline—however small—is traceable and reflected in the output filename, enabling strict reproducibility across the collaboration.
+
+
+\subsubsection{Straxen}
+
+\begin{comment}
+    
+\begin{itemize}
+    \item XENON-specific extension to strax.
+    \item Handles detector-specific corrections, calibrations and simulation inegration. Not sure how to approach the simulation integrations, need to discuss with others and think a bit more about it.
+    \item Example plugin (peaklet classification).
+\end{itemize}
+
+\end{comment}
+
+Straxen is built on top of the Strax framework and contains all the XENONnT-specific implementations for waveform processing. Straxen has context classes that inherit from Strax with added plugins and configurations to manage the corrections metadata required during data processing. It also includes a vast set of tools to analyze and visualize our data. 
+
+As mentioned, to process our data, we need specific configuration values and files that may change over time and have unique needs. While we store these correction values using Xedocs (discussed later), Straxen is responsible for applying them during processing. This is done using a system called URLConfigurations, which defines how and where the necessary correction values are retrieved and applied. Essentially, we can make URLs that handle where the data is fetched from, which version of the data we want, what data in particular, and any other transformations.
+
+To apply corrections during processing, Straxen uses URLConfigurations. A URLConfiguration (URLConfig) is composed of three major sections, each separated by a specific delimiter: the \textbf{protocol}, the \textbf{schema}, and \textbf{query}. Protocols indicate the procedure a URLConfig needs to follow to obtain the data, such as where to find the data and any formatting or processing that needs to happen on the data before it is used by the plugin. Protocols are characterized in the URL with the ``://" syntax following the name of the protocol. The schema specifies the type of correction being requested—for example, electron lifetime, PMT gains, or field distortion correction maps. Schemas can be identified by having a ``?" at the end of the schema name. The query section defines which version of the data should be retrieved. Every correction must include a validity time range and version, as well as additional query parameters for indexing, such as PMT number of type of NN, which can be added depending on the correction
+
+With these key components in place, we are now ready to walk through a concrete example of a plugin and then examine the data processing pipeline more broadly.%\textcolor{red}{Look at Dacheng slides for accurate current event reconstruction.}
+
+\begin{comment}
+The straxen plugins inherit from a base class in the strax framework. Straxen plugins all have the following characteristics:
+
+\begin{itemize}
+    \item Dependencies in other classes.
+    \item The output of this particular plugin.
+    \item initialization of needed values for the plugin via URL configurations
+    \item a compute function that generated the desired datatypes.
+\end{itemize}
+\end{comment}
+
+Need to talk about run\_id before this point in the straxen section.
+
+\subsubsection*{Data Collection}
+
+These signals are digitized every 10ns which determines the resolution of our waveforms. The digitized PMT waveforms are referred to as raw records. These represent voltage changes, including baseline fluctuations, which are normalized to zero before further processing. The raw records are then inverted and baseline-subtracted to express the signals in units of photoelectrons (PEs); these processed waveforms are referred to as records. Hits are grouped into preliminary peaks, referred to as peaklets. Signals far from other activity are classified as lone hits and typically considered noise, so they are excluded from further analysis. The peaklets are then refined using a peak-splitting algorithm, such as Jenks \acrfull{nb}, to identify substructure.
+
+
+The Jenks Natural Breaks is a data clustering algorithm which tries to split data into different classes by minimizing the within-class variance and maximizing the between-class variance, thereby identifying optimal split points in the data \cite{jenks1967model}. To quantify the quality of a split at time t, we define a ‘goodness-of-fit’ metric (GoF), in which we compute these values for the waveform from time $t = 0$ to $t$ (left) and from $t$ to $t_{max}$ via the following equation:
+
+$$ \text{GoF}= 1 - \frac{s_{left}(t) - s_{right}(t)}{s_{total}}$$
+
+Where:
+$$s = \sum_tw(t)(t-m)^2 \text{ and } m=  \frac{\sum_tt*w(t)}{\sum_tw(t)}$$
+
+Where $w(t)$ is the waveform value at time $t$ and $m$ is the weighted average of the data. Values near 1 can be interpreted as a strong preference to split, and values near 0 as a strong preference not to split. We refer to the standard implementation as the vanilla natural breaks (NB) \cite{jenks1967model}. However, this version tends to suggest splits at the peak of Gaussian-shaped waveforms, where the left and right variances are approximately equal, leading to artificially high GoF values. To counter this, we implemented a version that normalized the variance; however, this version had difficulties splitting waveforms with long tails \cite{Larkin1979AnAF}. Finally, we arrived at the low-split version, which is used in our data processing. The low-split variant modifies the GoF by incorporating a local amplitude penalty. Specifically, GoF is multiplied by a suppression factor around a given time window $t \pm \alpha$. We use a window of $\approx$150\,ns to deal with jagged waveforms \cite{githubPRstrax225}. From our testing, the low-split algorithm provides the best results as we can see in examples such as Fog. \ref{jenks_algo}.
+
+$$ \text{GoF}_{new}= \text{GoF} * (1 - \frac{m(t)_{t \pm \alpha}  }{\max{w(t)_{t \pm \alpha}}})$$
+
+The GoF-based splitting algorithm is applied recursively until no candidate time points exceed the splitting threshold. After this process is finished, we are left with the summed waveforms, which are peaklets. We intentionally use an aggressive splitting threshold, accepting that some S2 signals may be over-segmented, since they can later be recombined during the S2 merging step.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/xenonnt_bkg/peak_splitting_algo_example1.png}    \caption{Example waveform analyzed using the variations of Jenks-natural Breaks algorithm. We see that the low-split variation achieves the intended results of separating the waveforms at reasonable points \cite{githubPRstrax225}. }
+    \label{jenks_algo}
+\end{figure}
+
+
+After peaklets are identified, their properties are computed and passed to a classification algorithm that assigns each to one of three categories: S1, S2, or type 0 (unclassified). S2 peaklets are then merged based on their temporal proximity, recombining segments that were likely over-split during the Jenks-based procedure. Finally, by combining the classified S1 peaklets and the merged S2 signals, we construct peaks-—waveforms that correspond to individual physical interactions in the detector. 
+
+
+Once peak properties are computed (via the peak\_basics plugin) and the S2 spatial positions are reconstructed—often using machine learning algorithms—we begin the event building process, by associating S1 and S2 signals that are believed to originate from the same physical interaction in the detector. To generate events we first select the peaks that pass the energy threshold to be primary peaks. Once a peak is selected we calculate the figure of merit (FoM) for the potential event with the following formula:
+
+$$ FOM = \sum^{S1\text{ or } S2}_i (\frac{A^{pre}_i}{A} - 0.5), -10ms<\Delta t < 10ms$$
+
+Where $A^{pre}_i$ are the peak areas of the same type as the primary peak (S1 or S2) within a 10ms time interval, A is the area of the primary peak. If $FOM \le 7$ and the S2 area is greater than 100~PEs, then we build an event by matching this signal with the corresponding signal S2/S1. For SR2 we are modifying the event building efficiency to be significantly more sophisticated; however we will not be expanding upon these changes here.
+
+Additional event-level properties are then computed, applying as number of corrections, a full list of which can be seen in Fig. \ref{Xenon_datastructure} for SR1, and arrive at the corrected areas for the \acrfull{cs1} and \acrfull{cs2} signals after accounting for all detector and position based effects, producing the corrected\_areas data types \cite{instruments5010013}. With the corrected areas, we are ready to estimate the energy deposited in the interaction by calculating the true number of photons and electrons released based on the cS1 and cS2, respectively. So we calculate the total energy deposited in a given interaction with:
+
+$$E = \frac{W_q}{L(E)}(\frac{cS1}{g1} + \frac{cS2}{g2})$$
+
+L is the Lindhard factor, quantifying energy “lost” as heat. ($g_1$) and ($g_2$) are defined as the gains of the primary and secondary scintillation, respectively, and $W_q$ is effectively an average over microphysical processes producing excited/ionized atoms \cite{instruments5010013}. With these parameters, we can calculate the total energy of each interaction and thus understand what possible interaction could have caused them.
+
+%{figs/xenonnt_bkg/xenon_plugin_structure.png}
+\begin{figure}
+    \centering
+    \includegraphics[origin=c, width=17cm]{figs/software/xenonnt_correction_diagram_main_SR1.jpg}
+    \caption{Data structure for XENONnT during SR1. Shows the data processing and its dependencies, indicated by arrows, from raw records to event info. Some aspects have been simplified to make the diagram more digestible. For exampled we had 3 position reconstruction plugins with different algorithms. These all combined into a separate position reconstruction plugin, here this is compressed into the position reconstruction plugin.}
+    \label{Xenon_datastructure}
+\end{figure}
+
+
+\subsubsection{Cutax}
+
+
+Cutax is used in all major analysis for data cleaning and data selections. 
+It is the only component of the data analysis pipeline that remains private within the XENON collaboration.  Data cuts are critical since collect data at a rate of $\approx$40\,MB/s \cite{tda_Aprile_2023}, most of which has to be discarded because they do not correspond to interactions relevant to our physics goals. Over the course of the experiment, many data quality cuts have been developed by different collaborators to maximize signal retention while minimizing background.
+
+Cutax is built upon the Straxen interface and is the software used by most of our collaborators for data analysis. Cutax’s plugin structure allows analysts to apply or modify cuts reproducibly across different analyses. An example of such cuts is the fiducial volume cut. Background events are expected to cluster near the edges of the TPC due to radioactive contamination from detector materials. As such, this data introduces too many background interaction that negatively affect our signal to noise ratio. We use Neural Networks and the time difference between the S1 and S2 of an event to reconstruct its position. Using this information we can simply exclude all data within a few cm of the detector walls and the bottom PMT array, resulting in a fiducial volume cut. These data quality cuts drastically reduce the data volume: for SR0, only 134 candidate events remained after cuts, corresponding to less than 1\,GB of data \cite{PhysRevLett.131.041003}. 
+
+\subsection{Metadata Management with xedocs}
+
+As the experiment evolved over time, the need for a robust and flexible corrections data management system became apparent. Xedocs is our new corrections management software, replacing the previous CMT. I contributed to the development of Xedocs by testing the software, identifying bugs, and writing unit tests. Shortly after Xedocs was deployed, I took over responsibility for managing the collaboration’s corrections data, including ongoing maintenance and extending Xedocs to support new types of corrections as they became necessary.
+
+Xedocs has several compatible backends; however, the XENON collaboration mainly relies on MongoDB for storage of corrections data. However, not all data can be stored in MongoDB due to its file size limitations. In such cases, we upload the file to a GitHub repository and store a reference to it (e.g. filename) in MongoDB where we can use URL protocols to retrieve and format the data.
+
+\subsubsection*{Corrections data upload procedure}
+
+Suppose a new analyst in XENONnT wants to produced a new cut or changed our data processing pipeline, but to integrate these changes you need to compute a new correction factor, $\alpha$, which may be the result of a neural network or another complex computation. After presenting their new correction to other analysts, we begin the procedure of creating a new schema in xedocs to represent this data. The first step is identifying the type of correction you need, a comprehensive list of available correction types and their corresponding base classes is provided in ref. \pageref{xedocs_paper}. After selecting the appropriate parent class they can build their own class which inherits from the parent class and add any additional indexing or metadata required for your use case.
+
+If the new schema requires imports a Python object, such as a TensorFlow model, the model first needs to upload to the private\_nt\_aux\_files GitHub repository. Any pull requests to the correction database that reference this file will fail automated checks, as the GitHub Actions workflow will reject any reference to a file not found in private\_nt\_aux\_files. If only numerical data is being uploaded, this step can be skipped, and the process continues directly with a submission to the corrections repository.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/software/xedocs_make_json_example.png}
+    \caption{Example of creating a new entry for an existing correction. The relative light yield correction only requires a single value and the base indicies of version and time. After the new entry is made we convert it to a JSON file and format it before adding it to the corrections repository.}
+    \label{xedocs_json_upload}
+\end{figure}
+
+The corrections repository holds code related to XENONnT corrections used in Strax(en) via our correction databases. Its aim is to archive, within a GitHub repository, all the components needed to reproduce correction values, including their intervals of validity. From here we can use the built-in review process for reviewing and approving changes to corrections. In many cases, Straxen configurations depend on the specific run\_id being processed, which could result in different configuration values and therefore different lineage hashes for each run. To avoid this variability in lineage hashes, the resolution of certain configurations, particularly those defined via URLConfig, is deferred until runtime. This means that the URL string itself is what gets included in the lineage hash, not the actual data fetched from the URL.
+As a result, runs that share the same global configuration (e.g. the same URL string) will produce the same lineage hash, simplifying bookkeeping. However, because the actual values used during processing are resolved at runtime, users must ensure that the same configuration string consistently resolves to identical content in order to guarantee reproducibility.
+
+The corrections repository only accepts JSON files, each containing all the required fields defined by the corresponding Xedocs schema. After the data is verified by other analysts, the pull request is merged, and the data is added to the corrections repository. An example of making a new value for an existing correction to add to the corrections repository can be found in (Fig. \ref{xedocs_json_upload}).
+
+
+Next, the correction experts, the analysts responsible for managing Xedocs and corrections, launch the xedocs synchronization script using Portainer, which handles containers and services with an intuitive UI \cite{portainer_docs}. This method simplifies deployment and maintains logs of corrections, which we can reference in case of an error. Once the script is launched, Xedocs uploads the indicated corrections data to MongoDB, ensuring that all uploaded data complies with the integrity rules defined in ref. \pageref{xedocs_paper} as well as any other additional user-defined rules in the creation of the schema. A schematic of the full data flow can be seen in fig \ref{correction_dataflow}.
+
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figs/software/corrections_data_flow.png}
+    \caption{Data flow for updating a new correction into the corrections database via Xedocs. Dotted arrows indicate steps that might not be necessary depending on the correction, red arrow indicates a process as opposed to a movement of data. Updates to the corrections database are uploaded to MongoDB by using Portainer to run a script which utilizes Xedocs to upload data for the corrections GitHub repository to MongoDB.}
+    \label{correction_dataflow}
+\end{figure}
+
+The following paper, presented at CHEP 2023, describes XEDOCS: our metadata management system that I helped develop and maintain for the XENON collaboration. This system is crucial for ensuring reproducibility in our data processing pipeline, including the \acrshort{csom} classification methods. My contributions included testing, debugging, writing unit tests, and ongoing maintenance of the collaboration's corrections
+database.
+
+\includepdf[pages=-, pagecommand={\label{xedocs_paper}}]{xedocs_paper/XEDOCS_CHEP_23.pdf}
+
+The XEDOCS system described above provides the infrastructure that allows our \acrshort{csom} classification parameters to be versioned and tracked alongside all other detector corrections. This ensures that our classification improvements can be systematically deployed across the collaboration while maintaining strict reproducibility requirements essential for physics analysis.
+
+\subsection{Cloud Storage Support: S3 Backend for strax}
+
+%This is mainly a pitch to XLZD, where I just have to sell them in why S3 is better than Rucio at least for the frontend?
+
+As previously mentioned, the current data management system used by the XENONnT collaboration is Rucio. The framework enables data distribution across global locations and heterogeneous data centres. Rucio has demonstrated its performance at scale, for example in ATLAS, it manages over 1 exabyte of data across 120+ global sites, handling over 1 billion files with 4+ exabytes of annual transfers \cite{rucio_home}. In recent years, there have been attempts to enable Rucio to work with private and commercially available cloud storage systems; however, none of the integrations were seamless. With AWS S3 buckets in particular, conflicts began when Amazon updated its Custom Certificate Authority to manage security certificates which made it incompatible with Rucio \cite{Barisits2024}. In XENONnT, we decided to take a different approach; instead of integrating S3 compatibility into Rucio, we simply use the S3 buckets as an entirely separate system. But before that, we need to understand what an S3 bucket is.
+
+\subsubsection{What are S3 buckets}
+
+% show a few lines of code on how it works
+
+``Amazon Simple Storage Service (Amazon S3) is an object storage service that offers industry-leading scalability, data availability, security, and performance" \cite{amazon_s3}. It is used by many companies and institutions to store, manage and analyze homogeneous and heterogeneous data sets. The implementation of S3 storage involves ``Buckets", which are analogous to individual hard-drives where files are stored. Once a bucket is named, the user can store objects in it, S3 buckets do not have the traditional file systems and instead, stores all data as objects which have a unique identifying key. S3 Buckets have strict access control, ensuring the safety and integrity of our data. Furthermore, the credentials to buckets can be stored in the xenon configuration file used for credentials for all other services which require authentication.
+
+
+It is important to make a distinction between AWS S3 and the S3 protocols for our implementation. While S3 Buckets and protocols developed by Amazon, this does not mean that our data must be stored in Amazon Cloud Storage. In fact, we take advantage of the S3 protocols to interact with other storage sites such as the computing cluster here at Rice. This mitigates a lot of the cost associated with AWS cloud computing as they charge for both storage and number of transfers. 
+
+
+\subsubsection{Motivation}
+
+Rucio has been used by a variety of particle physics experiments over the year and was built at a time were no real public alternatives were available that could provide the necessary software \cite{Barisits_2019}. Rucio was built by a small team of developers and thus, truly understood and maintained by few. Some of Rucio's weaknesses are derived from its complexity making it hard for people to directly interact with it. It also has a steep learning curve which discourages analysts from spending time to interact with it as it rarely benefits their science goals. Using commercially available tools compensates from these issues as they are built with ease of use in mind, making it easier for analysts to learn 
+and drastically reducing the time that needs to be invested into learning the system.
+
+Using commercial alternatives such as S3 also ensures there is better support and documentation for the software. S3 protocols will be better maintained as companies devote teams to full time maintain and address any potential issues.
+Furthermore, from an educational standpoint, physicists working with S3 will develop more marketable skills as Rucio is only used within academia \cite{mathur2018mastery}. S3's proven track record in managing data streaming, is it at the core of Netfilx, one of the biggest data streamers who handle data transfers at petabyte scales \cite{böttger2018openconnecteverywhereglimpse, netflix2016s3}, makes it an appealing candidate as an alternate storage management system. 
+
+Since we want to be able to take advantage of emerging technologies, I worked on creating a backed for Strax to work with S3 buckets. While it is too late to restructure Strax storage system from scratch, we can offer capabilities to access more commercially used and well supported backends such as S3 for accessing higher level processed data.
+
+\subsubsection*{Context and storage} 
+
+Strax(en) does not currently have the functionality to automatically download data needed form Rucio RSEs, instead the data needs to be manually downloaded either using the rucio API or Admix, a wrapper around rucio designed for the XENON collaboration. Once the data is downloaded locally we can specify a path and strax(en) will search from data in the default directories and this newly added path. 
+
+Adding the S3 storage to Strax(en) was simple as the user just needs to enable it in the context by adding a flag in the context declaration. Once S3 is enabled in the context, the user can fetch data stored in the remote S3 bucket and download it to their local computer for use. This makes it a lot easier to run analysis locally as long as the user has the adequate resources. From experience, downloading data from the RSEs can sometimes be a bit unstable, so having a more reliable system such as using S3 protocols could speed up analysis by increasing data availability.
+
+% With S3 protocols, if strax(en) is not able to locate the data locally we can launch an S3 protocol to download the data for the user making it easier to use than our current methods using Rucio. (I mean we could probably implement this using rucio as well if we really wanted.)
+
+\subsubsection{Implementation Overview}
+
+%Utilix provides centralized configuration management across the XENON software stack. It uses token based authentication with automatic renewal.
+
+The implementation of the S3 I/O in strax was straightforward as it was mainly a copy of the current file system within Strax with the functions adapted to the boto3, a Python library for interacting with S3 protocols. 
+We added the S3 credentials to our configuration system Utilix which provides a centralized configuration management across the XENON software stack. Most analysts work with a shared configuration file in our computing clusters of dali, midway2 and midway3 so this update does not need to be distributed to multiple points. By applying S3 as a completely separate system to Rucio we avoid some of the pitfalls discussed in \cite{Barisits2024}.
+
+
+\begin{comment}
+    
+\subsubsection{Discussion}
+
+\begin{itemize}
+    \item Strengths of the Implementation: Modularity, reproducibility, flexibility.
+    \item Limitations and possible future improvements.
+    \item Vision on how this infrastructure can evolve. (discussion with Chris)
+\end{itemize}
+
+\end{comment}
+
+\subsection{Conclusion}
+
+
+In modern high-energy physics (HEP), computing infrastructure plays a central role in enabling large-scale data acquisition, processing, and analysis. Many collaborations have documented the lessons learned from designing and deploying software systems tailored to their experimental needs. Here we contribute to this literature by discussing the advantages and lessons learned from our main software stack, Strax(en). We developed a flexible and user-friendly conditions database system, which is easy to implement and adapt to other experiments. We hope it can serve as a model or starting point for future collaborations. Furthermore, we are taking initial steps toward integrating modern industry-standard cloud storage protocols, such as S3-compatible object storage and we would like to encourage future experiments such as XLZD, the proposed experiment after XENONnT and LZ finish their expected runs \cite{xenon_xlzd_announce, baudis2024darwinxlzdfuturexenonobservatory}, to consider using such options as it can streamline data access for analysts and reduce technical overhead. This would decrease the amount of time analysts need to spend on technical tasks resulting in more time spent in the data analysis.
+
+\newpage

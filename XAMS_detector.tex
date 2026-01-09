@@ -1,0 +1,362 @@
+\section{The XAMS Experiment}
+
+To validate our  \acrfull{csom} classification method's generalizability beyond XENONnT's specific configuration, we applied it to XAMS—a smaller R\&D detector with different geometry, electronics, and operational parameters. This chapter demonstrates that our approach successfully identifies signal types and detector artifacts across different xenon TPC implementations, establishing SOMs as a robust tool for the broader dark matter detection community and future experiments like XLZD.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figs/xams_detector.png}
+    \caption{Diagram of the XAMS TPC. The active volume of the TPC is surrounded by Teflon, with PMTs installed at the top and bottom for light collection. Surrounding the Teflon-lined walls, there is a series of field-shaping rings to ensure a homogeneous and uniform electric field. The electric field is established by a cathode at the bottom of the active volume, an anode at the top, and a gate electrode just below the xenon liquid-gas interface.  }
+    \label{fig:xams_tpc}
+\end{figure}
+
+\subsection{XAMS Detector}
+\label{sec:detector_description}
+
+The experiment is XAMS, located at Nikhef (Netherlands).  This is a surface-based detector, hence we should expect a considerably more background than in the XENONnT data. The main goals of the XAMS experiment are two-fold: to test if faster, 2\,ns digitizers would enable us to distinguish ERs from NRs based on the waveforms due to the different singlet/triplet ratios of these two types of interactions and, to test a new PMT, the Hamamatsu R21699 2-inch photo-multiplier tubes and evaluate its performance for potential use in future detectors.
+
+In theory, nuclear and electronic recoils in xenon are distinguishable by analyzing the time distribution of scintillation photons, which affects the shape of the reconstructed waveform. Liquid Argon experiments such as LArTPC have shown this is possible via PSD. When noble gases are excited, they can emit scintillation light by forming a dimer with another non-excited particle of the same element. These dimers can form in either a singlet (spin-0) or triplet (spin-1) state, each with distinct lifetimes. In argon, the singlet state has a lifetime of 7\,ns, while the triplet state has a lifetime of 1.6\,μs. Nuclear and electronic recoils produce different ratios of singlet and triplet states. NRs predominantly generate singlet states, leading to shorter decay times, while ERs produce more triplet states, resulting in longer scintillation decay times. When a particle interacts with a collection liquid argon particles in a way that imparts sufficient energy, they usually excite multiple particles at the same time. As such based on the width of the resulting waveforms, an indirect measure of the decay time of the interaction, we can determine whether the interaction was from an NR or ER interaction, hence the pulse shape discrimination name \cite{Lippincott2008}.
+
+Analysts for the XAMS examined if this was possible with liquid xenon detectors as well. The standard digitizing time for liquid xenon experiments is 10\,ns, however liquid xenon has a narrower time difference between the singlet and triplet state being 3.1 and 24\,ns, respectively \cite{PhysRevB.27.5279}. The XAMS experiment employs 2\,ns digitizers to test the feasibility of pulse shape discrimination in liquid xenon. However, their results were not promising \cite{xams_article}.
+
+
+
+\begin{comment}
+    
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figs/pmt_diagram.png}
+    \caption{Illustration of a photomultiplier tube. When light strikes the photocathode, it releases electrons.  which are subsequently amplified by a series of dynodes. This cascade amplification process enhances the initial signal before it is read out at the anode. }
+    \label{fig:cylindrical_pmt}
+\end{figure}
+
+\end{comment}
+
+% modify this data so I can include it in the paper
+
+The XAMS TPC has an active volume of 153\,cm$^3$, which corresponds to 445\,g of LXe~\cite{HOGENBIRK201687} .  Fig. \ref{fig:xams_tpc} shows a schematic representation of the XAMS TPC. When a particle interacts with a Xe atom inside the detector, forming dimers, the de-excitation process emits a 178\,nm photon. Similar to XENONnT, this scintillation light is referred to as the S1 signal or prompt signal. The liberated electrons produced in these interactions drift due to the  electric field of 100\,V/cm from their interaction point. The field is applied in the detector between the cathode and the gate mesh. The electrons drift towards the top of the detector, reaching the gas-liquid interface. A stronger electric field of 3.75\,kV/cm between the gate and anode mesh extracts them into the gas phase, where they induce secondary scintillation in the xenon. This ionization-induced signal is referred to as the S2 signal or delayed signal. 
+
+The PMTs have a rather different geometric structure when compared with its predecessors. Normally, PMTs have a cylindrical shape where photoelectrons get amplified by a series of dynodes until they reach their final collection plate. This PMT has a square shape where, instead of the electrons being amplified as they go to the back of the PMT the electrons here are amplified in a fashion that is perpendicular to the initial average directions of the photoelectrons produced. This different geometry does not significantly affect the shape of the waveforms but it does introduce difficulties when analyzing PMT afterpulsing. This new PMT could introduce unexpected artifacts into our data that we would like to understand if we want to use this kind of PMT in the future for our experiments.
+
+The Xe in the TPC is circulated continuously through a high temperature SAES MonoTorr PS3-MT3-R-2 getter~\cite{saes2002} to remove electronegative impurities. Both  signals are collected by two novel squared Hamamatsu R21699 2-inch photo-multiplier tubes (PMTs), one in the top and one in the bottom of the TPC. The top PMT is divided in four sectors, each with their own digitizer creating one PMT with four independent channels. The bottom PMT combined all channels into one signal as the bottom PMT is not used for xy position reconstruction. XAMS uses the CAEN V1730D digitizer with a sampling frequency of 500~MHz, which corresponds to a 2\,ns sampling width. This high-sampling frequency enables the study of subtle features in the signals that arise from underlying physical processes that can be characterized by an SOM. A typical S1 signal has a width of approximately 10\,ns, determined by the decay time of the recombined dimer states. The width of the S2 signal is in the order of $\mu$s due to variations in electron drift times caused by longitudinal diffusion of the electron cloud. To calibrate the response of each channel, an optical fiber was installed in XAMS through which pulsed LED signals are emitted directly into the TPC. Based on this measurement, we estimate the average number of electrons produced during the amplification of a single photoelectron (PE) liberated at the photocathode.
+
+
+
+For data processing, XAMS detector uses \texttt{strax} based data processor \texttt{amstrax}~\cite{2023amstrax} analysis framework, an open-source software distribution built on top of \texttt{strax}~\cite{2024strax} framework. The raw data from the digitizer is segmented into 220\,ns chunks per channel. In this data \texttt{amstrax} searches for ``hits". Hits are defined as the time interval of a signal above a threshold extended by a window of 10\,ns on the left and 10\,ns on the right. These per-channel hits are clustered sequentially with neighboring hits (from any channel) within 300\,ns in time. The hits which have no neighboring hits in this time window are primarily due to afterpulses or dark counts. The hits in these clusters are summed to produce waveforms, referred to as peaks in this work.  The waveforms are currently classified based on a selection in a 2-D parameter space. A waveform is classified as an S1 if its width, defined as the full width  at 50\% of its area, is smaller than 140\,ns. For the S2, the width is at least 750\,ns and has a minimal area of 100\,PE. 
+
+The next step is to make ``events" which consist of matching an S1 its corresponding S2. First, we compute several ``peak" properties which are used for event building and making data quality cuts and store these in ``peak\_basics". These computations are distributed across three plugins: (1) Peak Basics, which derives peak properties from existing data; (2) Peak Positions, which estimates the interaction position using detected photons in each PMT; and (3) Event Matching, which pairs S1 and S2 signals to construct events. Events are built using a waveform-based trigger. Waveforms larger than 10\,PE is called the triggering waveform. These waveforms are grouped in time, including all waveforms that occurred 100\,ms before or 5\,ms after the triggering peak. Within this time window, an event is constructed by pairing the largest S1 with the largest S2. After applying corrections for electron lifetime, light collection efficiency, and quantum efficiency, we compute the total deposited energy using the following formula.
+
+%$$ E = W(n_{ph} + n_{e} = W(\frac{cS1}{g_1} + \frac{cS2}{g_2})$$
+
+%Where $W = (13.7 \pm 0.2)$ eV/Quantum which represents the mean energy required to make either a scintillation or ionization quanta. $n_{ph}$/$n_e$ is the number of photons/electrons emitted in the interaction. $n_{ph}$ can be calculated using the corrected S1 area $cS1$ over the photon gain and $n_e$ is the corrected S2 area $cS2$ over the electron gain \cite{xenoncollaboration2024xenonntanalysissignalreconstruction}.
+
+By determining the energy of the interaction, we can identify the type of particle responsible for it. This includes interactions from decays of known radiation sources, muons, calibration sources, or potential WIMP signals. Accurate background modeling allows us to identify exotic signals that may indicate the presence of undiscovered particles, such as dark matter.
+
+\subsection{XAMS commissioning data}
+\label{sec:commissioning_data}
+
+Data collection during the commissioning phase began immediately after sealing the detector. Since the innermost parts of the detector were exposed to air for a relatively long period, water might have been present in the detector. The detector volume, along with the attached components, was extensively pumped out before being filled with Xe. During the data-taking period of 14\,days, Xe gas was continuously recirculated through a high-temperature getter, which removes most impurities from the circulating gas. Despite this purification process, electron lifetime remained limited. The initial electron lifetime of 5\,$\mu$s did not improve significantly over time. As a result, only 0.03\% of the initial number of electrons produced in an interaction contributed to the S2 signal occurring at the maximum drift time of 40\,$\mu$s. The electron lifetime is the average time an electron can drift through the liquid xenon before being absorbed by an electronegative impurity. It serves as an indirect measure of the xenon purity which directly affects the size of the S2 signals.
+
+During the commissioning phase, external calibration sources—$^{22}$Na, $^{137}$Cs, and $^{60}$Co—were used. $^{22}$Na is a $\beta^+$ emitter that decays to an excited state of $^{22}$Ne. The emitted positron annihilates with an electron, producing two back-to-back 511\,keV gamma rays. The de-excitation of $^{22}$Ne emits a 1274\,keV gamma ray. Both $^{137}$Cs and $^{60}$Co are $\beta^-$ emitters. $^{137}$Cs decays primarily to an excited state of the daughter nucleus $^{137}$Ba, which de-excites by emitting a 662\,keV gamma ray. $^{60}$Co decays to an excited state of $^{60}$Ni, which de-excites in two steps, emitting gamma rays of 1173\,keV and 1332\,keV, respectively. These calibration sources provide well-defined gamma-ray energies, allowing for detector energy calibration and resolution studies.
+
+Because $^{22}$Na emits back-to-back gamma rays, their time coincidence can be used to trigger this specific decay. A thallium-doped sodium iodine (NaI(Tl)) scintillation detector was placed adjacent to the XAMS TPC, with the $^{22}$Na source positioned precisely between the two detectors. A collimator was positioned between the $^{22}$Na source and the NaI(Tl) detector to constrain the gamma-ray emission direction. This setup enables the NaI(Tl) detector to function as a coincidence detector for 511\,keV gamma rays: when the NaI(Tl) detector detects a 511\,keV gamma ray, the other gamma ray going directly into the active volume of the TPC is tagged. This method effectively eliminates nearly all non-511\,keV gamma-ray interactions from the data.
+
+The calibration data from all three sources were utilized as part of the training dataset for a conscious-SOM (CSOM). The input vectors for the training are explained in Sec.~\ref{sec:training_data}. We primarily analyze data collected in December 2023 and examine the resulting findings. We also briefly examine data taken in the summer of 2024. However, detector conditions vary significantly in this type of detector as all the xenon is pumped out by the end of a run and has to be pumped back in. The PMTs are also subjected to large temperature changes during these times making the data from different science runs will not be directly comparable.
+
+
+\subsection{Training data}
+\label{sec:training_data}
+
+To train a CSOM, we used a total of 300,000 input derived from the waveform and spatial information of individual interactions. We randomly sampled 100,000 waveforms from each calibration source discussed in Sec.~\ref{sec:commissioning_data}. The input vector is defined by the area, area deciles, and area fraction top (AFT). The waveform area represents the total number of photoelectrons (PEs) detected during the interaction. The area deciles correspond to the time it takes to reach 10\%, 20\%, ..., 100\% of the total area of the waveform. The AFT refers to the number of PEs detected by the top PMT divided by the total number of PEs in the interaction. The area deciles are used as a parameter since they describe the general shape of the waveform which is one of the primary factors to distinguish different types of signals. We excluded the first decile because it typically lacks significant interaction information and often contains data processing artifacts, which complicate accurate signal classification. The area of the waveforms are needed for a similar reason, they contain information regarding the signal strength which is useful, together with the shape, to distinguish low energy signals apart. Finally, AFT quantifies the fraction of photons detected by the top PMTs relative to the total. This is useful because S1 signals are expected to have a lower ratio than S2 signals. S1 photons are released primarily between the gate and cathode, meaning the photons can reflect back from the liquid/gas interface and the gate itself can also reflect photons back to the lower PMT. Similar approach can be seen in other detectors where the time between 10\% to 50\% of the data is used for signal classification~\cite{sanchez2023som}. Using these input vectors, we trained a 50$\times$50  \acrfull{csom} for a total of 30 million steps using the parameters listed in Table~\ref{tab:som_parameters}.
+
+
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{c|c|c|c}
+         Decay Time &  $\alpha$ &  $\beta$ &  $\gamma$\\ \hline
+         300,000 &  0.7 &  0.7 &  5 \\
+         800,000 & 0.2 & 0.1 & 2 \\
+         1,200,000 & 0.05 & 0.05 & 1 \\
+         2,000,000 & 0.01 & 0.01 & 0.5 \\
+         3,000,000 & 0.005 & 0.005 & 0.4 \\
+
+    \end{tabular}
+    \caption{Parameters used to train the \acrshort{csom} with XAMS calibration data along with the decay schedule.}
+    \label{tab:som_parameters}
+\end{table}
+
+% Might move SOM visualizations to the SOM chapter instead
+
+\subsection{SOM Visualizations}
+
+After training the CSOM, we analyzed the topology of the data mapped onto the 2-D grid to identify clusters, groups of data points with similar characteristics. Unlike traditional clustering algorithms, the \acrshort{som} does not automatically extract clusters but instead organizes data in a 2D gird based on topological similarities. Instead, users employ visualization techniques to identify cluster boundaries, refine them, and highlight populations of interest. To analyze these clusters effectively, we employ several visualization techniques, starting with the mU-matrix.
+
+\subsubsection{mU-matrix}
+
+The mU-matrix~\cite{ultsch1990} is one of the earliest and most widely used methods for visualizing \acrshort{som} structure. It reveals both the density of data mapped to each neuron and the relationships between neighboring weight vectors, highlighting similarities and potential boundaries between clusters.
+
+\begin{enumerate}
+    \item Cell Coloring: Each cell in the grid represents a neuron and is color-coded (e.g., black to red) to indicate the number of input vectors (waveforms + spatial data of a particle interaction) mapped to it. Higher densities of data mapping to a location are represented by redder cells. 
+    \item Fences: Lines between cells, known as ``fences", are color-coded from black to white to represent the Euclidean distance between adjacent weight vectors, i.e. how different a collection of peaks are from their neighbors. Whiter fences indicate larger distances, suggesting potential cluster boundaries as we can attribute different physics between those interactions.
+\end{enumerate}
+
+
+This dual representation of density and distances helps identify regions of high data concentration and delineate distinct clusters. Fig.~\ref{fig:mU-matrix} presents an example of an mU-matrix, where the top-right region shows a distinct cluster identified as the S1 cluster. While the mU-matrix primarily highlights density variations and Euclidean distances, the CONN-matrix provides a complementary perspective by visualizing connectivity between neurons.
+
+\subsubsection{CONN-matrix}
+
+Unlike the mU-matrix, which primarily visualizes distance relationships, the CONN-matrix explicitly encodes neuron interactions by tracking their shared assignments across data points. The CONN-matrix~\cite{Tasdemir2009} offers additional insights into neuron connectivity, aiding in cluster identification. In this visualization,  two neurons are considered connected if, for a given data point, weight vectors $w_a$ and $w_b$ are the best-matching unit (BMU) and second best-matching unit (sBMU) respectively. This means that the two weight vectors correspond to the closest and second-closest prototypes in Euclidean space relative to the given data point. The connection strength between two neurons is defined as the number of data points for which they satisfy this criterion.
+
+\begin{enumerate}
+    \item Connections: Each neuron appears as a black dot, with lines representing its connections to neighboring neurons. Thicker lines indicate stronger connections.
+    \item Color Ranking: Line colors indicate connection strength, with red representing the strongest connections, followed by blue, green, yellow, and progressively weaker colors.
+\end{enumerate}
+
+This visualization highlights the relative similarity between neighboring weight vectors and allows for a more detailed understanding of cluster boundaries. Fig.~\ref{fig:CONN-matrix} presents the CONN-matrix for XAMS data, illustrating neuron relationships and cluster structures.
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 18cm,height= 16cm,keepaspectratio]{figs/xams_cal_50x50.k3.r.5000000.som.png}
+    \caption{mU-matrix of the \acrshort{som} trained with XAMS data. Each cell is color-coded from black to red, representing the relative number of data points mapped to it. The lines between the cells represent the Euclidean distance between adjacent weight vectors in the grid space. These lines indicate a rough boundary showing different kinds of peaks. For example, the top-right region with clear fencing around its perimeter, corresponds to the S1 cluster.}
+    \label{fig:mU-matrix}
+
+\end{figure*}
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 18cm, height=16cm, keepaspectratio]{figs/xams_cal_50x50.k3.r.5000000.nnd-ref.png}
+    \caption{CONN-matrix from the \acrshort{som} trained with XAMS data. Each neuron is represented by a black dot, with lines connecting related neurons. Thicker lines indicate the two neurons are heavily connected. The color of each line indicates the ranking of connection strength: red represents the strongest connection, followed by blue, green, and yellow. These connections indicate a level of similarity between weight vectors which tend to correspond to neurons mapping variations of the same type of physical interaction. }
+    \label{fig:CONN-matrix}
+
+\end{figure*}
+
+\subsubsection{Plotting Neurons}
+
+Another effective technique is to visualize the average input vectors assigned by each neuron directly on the \acrshort{som} grid. This approach reveals similarities and differences between weight vectors and groups of weight vectors, making it particularly useful for identifying clusters defined by one or two distinct parameters.
+
+Since \acrshort{som} neurons represent the average input vectors mapped to them, this visualization reveals unique features that may not be evident using other methods. Clusters with subtle distinctions in certain parameters can emerge through this technique. For example, regions that initially appear as a single cluster, upon closer inspection, reveal clusters with meaningful differences, as shown in Fig.~\ref{fig:som_grid_w_avg_deciles}.
+
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 18cm,height= 16cm,keepaspectratio]{figs/XAMS_SOM_clusters_labeled.jpg}
+    \caption{2D \acrshort{som} grid with the average input vector mapped to each neuron. Clusters are separated by color and fences, each representing a different waveform topology. Each cluster detected is labeled with a number and a color with outlines, which will be discussed in Sec.~\ref{sec:som_results}. The top right region is associated with S1s, the top left region with type 0 interactions and the bottom right regions with S2s.}
+    \label{fig:som_grid_w_avg_deciles}
+
+\end{figure*}
+
+\subsubsection{Parameter space visualization}
+
+Once clusters are identified, they can be projected back into familiar parameter spaces. Larger data groupings, or `superclusters', in the \acrshort{som} grid may contain smaller, distinct subclusters that are of particular interest. By visualizing these clusters in parameter space, we can verify their composition and refine cluster boundaries. This process helps determine whether to merge or subdivide clusters, leading to a more refined and accurate analysis.
+
+
+
+\subsection{Current Data 
+Characterization }
+\label{sec:previous_classification}
+
+
+%In the current data processor \texttt{amstrax}, the waveform classification includes three classes: S1, S2, and unknown. With the current classification method, 46\% of the data were classified as S1, as S2 23\%, and 31\% as unknown from the training dataset. 
+
+In the current data processor \texttt{amstrax} waveforms are classified into three categories, S1s, S2s, and unknowns. The classification algorithm follows these rules:
+
+\begin{enumerate}
+    \item A peak is classified as an S1 if it meets the following criteria: (1) its area exceeds the 10 PE threshold, (2) its 50\% area width falls between 10 and 225\,ns, (3) its AFT is below 0.2, and (4) at least five PMTs contribute to the signal.
+    \item A peak is classified as an S2 if: (1) its area exceeds 10\,PEs, (2) its 50\% width is greater than 225\,ns, and (3) at least five channels contribute to the signal.
+    \item All other peaks are classified as type 0.
+\end{enumerate}
+
+Focusing on a fixed number of classes can overlook features that help diagnose detector conditions and data artifacts. In contrast, the CSOM-aided classification provides a detailed and granular analysis, uncovering hidden patterns and improving data interpretation accuracy. We analyze the 23 identified clusters based on their specific attributes, exploring their nature and contribution to understanding detector conditions and potential data artifacts. We begin by discussing S1/S2 classification, the primary focus of the XAMS experiment. However, we also examine each identified cluster. Although we could not identify all clusters in the XAMS data, we characterized most of them and ruled out certain possibilities for the more ambiguous clusters.
+
+\subsection{S1 and S2 classification}
+\begin{figure}[!h]
+    \centering
+    %\hspace*{-0.6cm}
+    \includegraphics[width = 8.5cm,keepaspectratio]{figs/sample_s1_s2.pdf}
+    \caption{Examples of typical S1 and S2 waveforms. S1 signals reach their maximum amplitude early and gradually return to zero, whereas S2 signals exhibit a more Gaussian-like distribution of photoelectrons (PEs).}
+    \label{fig:s1s2_example}
+\end{figure}
+
+
+As discussed in Sec.~\ref{sec:detector_description}, signals from a TPC come in two types, S1 and S2. Therefore, the first clusters of interest were those related to S1 and S2 signals. We identified a cluster containing S1 signals (cluster 3) in Fig.~\ref{fig:som_grid_w_avg_deciles} and compared it to the current classification. Since this is a data-driven analysis, ground truth is not available, requiring a different approach to cluster identification. To better understand the robustness of the S1 classification by the CSOM, we applied a coincidence requirement to the S1 coincidence data from the $^{22}$Na calibration data. We found that the current classification has an efficiency of 97.96\%, whereas the CSOM-aided classification has an efficiency of 97.62\%. Although this part of the analysis is limited to a mono-energetic source of S1s, the \acrshort{som} classification largely overlaps with the current classification, which has been thoroughly validated. As such we can use the S1 classification in this analysis as a proxy for ground truth for S1's in that the 2 classifications should mostly overlap. 
+
+Next, we examined event-level data where S1-S2 pairs were identified. The SOM-aided classification showed a 7\% increase in efficiency, primarily due to its improved ability to identify more S2 signals matching S1 signals. Fig.~\ref{fig:s1s2_example} shows examples of S1 and S2 waveforms classified by the CSOM. Compared to the current method, 46\% of waveforms were classified as S1. Similarly, 20.22\% were classified as S2, whereas the current method assigns 23\% to S2. This difference arises because the current method includes non-S2 waveforms, as revealed by additional clusters identified as non-S2. In the current method, the remaining 31\% were classified as unknown. In addition, visual inspection revealed that the CSOM-aided classification reduces false positive S1 signals by 0.5\%, with the misclassified signals seeming to correspond to photo-ionization electrons and PMT afterpulses as the waveforms found are consistent with this kind of data. Clusters 5 and 15 in the 2-D grid were identified as S2 signals. The \acrshort{som} offers a granular analysis of the data, allowing the S2 population to be divided into two clusters. Further analysis showed that cluster 15 consists of S2 signals from shallow interactions or interactions near the gate, while cluster 5 contains signals from deeper in the detector, suggesting that cluster 15 may originate from material backgrounds. The \acrshort{csom} also identified a known set of S2-like signals originating from a localized region of the detector, categorized as cluster 11.
+
+%%% Resume writing here %%%
+
+A key challenge in defining hard boundaries in 2D parameter space for waveform classification is that they must be manually determined, often requiring trade-offs between efficiency and purity, as data is frequently non-separable in low-dimensional space. Beyond enabling data analysis in a higher-dimensional space, the CSOM-aided classification also simplifies and accelerates the process. To illustrate this, we analyze event-level data using both classification methods and plot the corresponding S1 and S2 distributions in the parameter space defined by the current method. The event selection criteria include a drift time within the [15, 35]\,$\mu$s window and require that all signals from both S1 and S2 be detected by all TPC channels. The hard boundary classification in the current method resulted in 6.9\% of events failing to form, as no S2 could be matched to the corresponding S1. The SOM-aided classification recovers additional S2 signals, allowing more events to be formed. These additional events are shown as red markers in Fig.~\ref{fig:cls_diff_SOM_v_amstrax}.
+
+\begin{figure}[!h]
+    \centering
+  \includegraphics[width = 8.5cm,keepaspectratio]{figs/amx_cls_2dhist_som_points.pdf}
+    \caption{2D parameter space of the current classification method. Event count of the current classification with its corresponding S1's and S2's. Red x markers show the S1's and S2's corresponding to events in the SOM-aided classification that were not captured by the current method. The red x's in the S2 region show the problem with hard boundary classification; they lead to either over or undervaluation of data distribution of desired features. As such many S2 interactions are left out of the analysis }
+    \label{fig:cls_diff_SOM_v_amstrax}
+\end{figure}
+
+\subsection{SOM Data Characterization}
+\label{sec:som_results}
+
+In this section, we examine each subcluster identified in the SOM-aided analysis of the XAMS data. This is not an exhaustive analysis, as a few of the observed clusters could be further subdivided. Instead, we focus on characteristics relevant to the physics analysis. Here, we discuss clusters contributing to S1s and S2s, as well as other interactions of interest. We examine multi-scatter interactions, which are typically removed in WIMP analyses. Merged S1s and S2s, which indicate that the peak splitting algorithm could be further optimized using information from this cluster. Photo-ionization electrons, if misclassified, can be a primary source of accidental coincidences in low-energy analyses. Photo-ionization electrons which, if misclassified, can be the main source of accidental coincidences with these types of experiments when conducting a low energy analysis. Afterpulsing which is a result of impurities within the imperfect vacuums inside of a PMT. Additionally, we examine clusters without firm explanations, such as the narrow S2 population, interactions likely originating from PMT effects, and other unidentified clusters. The latter may result from dark counts or other known PMT phenomena.
+
+\subsubsection{Cluster 1: Double Scatter S2s}
+
+Clusters 1, 4 and 20 contain multi-scatter interactions. Cluster 1 appears as the black cluster in the middle of the \acrshort{som} and consists of double-scatter events. WIMP interactions are expected to produce only single-scatter (SS) events, where one S1 precedes a single S2. However, in some cases, a multi-scatter (MS) event occurs, in which one interaction produces 2 S1-S2 pairs. WIMP search analyses rely on additional information from veto detectors and timing information to tag MS events~\cite{PhysRevLett.131.041003,PhysRevLett.131.041002,PhysRevLett.127.261802}, which comes with a cost to signal efficiency. The \acrshort{csom} data characterization method offers the opportunity to identify MS events by relying solely on the waveform.This conclusion was drawn by analyzing sample waveforms from this cluster, which clearly show two S2s side by side as shown in Fig.~\ref{fig:double-scatter}. Clusters 4 and 20 also contain multi-scatter waveforms. The key difference from Cluster 1 is that, while the waveforms in Cluster 1 remain distinct, those in Cluster 4 and 20 merge into each other. Identifying clusters with multi-scatter interactions enables the implementation of selection cuts to exclude them from analyses where they are undesired, thereby reducing potential background contributions.
+
+
+\begin{figure}[ht]
+    \centering
+    %\hspace*{-0.6cm}
+    \includegraphics[width = 8.0cm,keepaspectratio]{figs/double_scatter_wf.pdf}
+    \caption{Examples of the double scatter signals, S2 waveforms we found in cluster 1.}
+    \label{fig:double-scatter}
+\end{figure}
+
+
+\subsubsection{Single electrons (SE)}
+
+Clusters 2, 9, 10, 16, 19 and 21 all appear to be single-electron (SE) clusters. Waveforms in these clusters lacked a cohesive structure, primarily appearing as a series of delta-like peaks. These waveforms exhibited a high area fraction top (AFT), averaging approximately 0.84, with a homogeneous xy distribution in the detector. With an average uncorrected area of 7.81, we believe these clusters likely consist of single electrons or the cutoff tails of large S2 signals. The proper identification of SE is critical for xenon TPC experiments. SEs are a primary source of accidental coincidences, which constitute the dominant background in low-energy event searches, such as the recent B8 analysis by XENONnT ~\cite{XENON:2024ijk}. The SE rate serves as an indirect measure of electronegative impurities in the detector, which impact electron lifetime. A lower electron lifetime increases the necessary area corrections for S2 signals, reducing measurement precision.
+
+\subsubsection{Cluster 3: S1 cluster}
+
+Cluster 3 represents the S1 subclusters, with over 99\% overlap between the \acrshort{som} cluster and the S1 signals designated by the current classification algorithm. These waveforms exhibit the expected shape and rise-time distribution characteristic of S1 signals. While this cluster strongly aligns with the existing S1 classification, further analysis suggests that it may contain distinct subpopulations. However, for this analysis, we did not distinguish between them.
+
+
+\subsubsection{Cluster 5: S2 cluster}
+
+Cluster 5 exhibits the expected characteristics of an S2 cluster, both in waveform shape and area fraction top (AFT). The average AFT for this cluster is 0.41, significantly higher than the 0.12 average for the S1 cluster. Fig.~\ref{fig:cls_diff_SOM_v_amstrax} illustrates the distribution of S2s, as identified by the previous classification algorithm, alongside the distribution from Cluster 5. Notably, the previous algorithm introduces a sharp cut in the distribution, an artifact that does not reflect natural data trends. In contrast, the red x's in the figure highlight the more natural extension provided by the SOM-based classification.
+
+%To quantify the similarity between the two datasets, we conducted a Kolmogorov-Smirnov (K-S) test on their rise-time distributions. The test returned a K-S statistic of 0.055 and a p-value of $8.1 \times 10^{-49}$, effectively zero. These results indicate that the distributions are very similar, but the low p-value suggests the presence of subtle differences. These differences will be explored in subsequent sections, particularly in the context of data excluded from the S2 classification. The histograms in Fig.~\ref{fig:amx_vs_SOM_s2_hist} further emphasize the similarity between the two distributions.
+
+
+\begin{figure}[ht]
+    \centering
+    %\hspace*{-0.6cm}
+    \includegraphics[width = 8.0cm,keepaspectratio]{figs/amx_s2_vs_cluster_5_hist.png}
+    \caption{Histograms depicting the distribution of the S2 according to the current classification algorithm and cluster 5. We can see that these two distributions are similar to each other indicating they might be part of the same distribution.}
+    \label{fig:amx_vs_SOM_s2_hist}
+\end{figure}
+
+\subsubsection{Cluster 15: Second S2 cluster}
+
+Cluster 15 is positioned directly above the main S2 cluster in the \acrshort{som} grid space. Event reconstruction tests indicate that this cluster contains genuine physical interactions. Consequently, we classify it as part of the S2 population. Although most waveforms align with typical S2 signals, some exhibit unusually narrow shapes. This feature warrants further investigation to understand its implications for the detector’s response.
+
+\subsubsection{Cluster 11: Localized S2's}
+
+Cluster 11 corresponds to a population previously identified by the XAMS collaboration, though its origin remains unclear. The waveform shapes strongly suggest that these are S2 signals; however, the events are distinctly localized towards the center of the detector. The average AFT for this cluster is 0.36, lower than the typical S2 value but still more consistent with S2 than S1 signals.
+
+The spatial distribution of these signals, as shown in Fig.~\ref{fig:cluster_11_xy_density_hist}, highlights their central localization. Currently, the origin of these events remains unknown. Investigating their cause could yield valuable insights into detector behavior or unexpected physics within the detector.
+
+\begin{figure}[ht]
+    \centering
+    %\hspace*{-0.6cm}
+    \includegraphics[width = 8.0cm,keepaspectratio]{figs/cluster_11_xy_density_hist.png}
+    \caption{Localized S2's positional distribution. The x and y axis are the normalized spatial dimensions within the XAMS tpc and colorbar indicated the number of interactions mapped to each bin. Normally, S2s are distributed uniformly across the TPC but we can see that these signals are primary coming from the center of the detector. }
+    \label{fig:cluster_11_xy_density_hist}
+\end{figure}
+
+\subsubsection{Merged S1s and S2s}
+
+Clusters 17 and 18 contain events in which S1 signals are merged with S2 signals. As described in Sec.~\ref{sec:detector_description}, signals from different PMT channels are grouped into clusters based on their timing, with these clusters referred to as hits. Hits are iteratively split into sub-clusters to mitigate artifacts such as PMT afterpulsing, multi-scatter events, and merged S1-S2 signals. However, the splitting process requires careful fine-tuning, which can be time-intensive and prone to biases. Inefficient splitting can merge S1 and S2 signals or produce incomplete waveforms, degrading energy resolution.
+
+Upon examining Cluster 17, we observed a population of merged S1 and S2 signals, suggesting potential issues with the splitting algorithm. Fig.~\ref{fig:mergedS1S2} illustrates a normalized average waveform from Cluster 17 (dashed purple) alongside the average area fraction top (AFT) per time for these waveforms (solid red). Cluster 6 exhibits similar characteristics but contains a mix of either two merged S2 signals or an S1 merged with an S2. Identifying these clusters is critical for improving the splitting algorithm and mitigating systematic biases in the analysis.
+
+\begin{figure}[!htp] \centering \includegraphics[width=8.0cm,keepaspectratio]{figs/AFT_distribution_wf_s1s2_cluster.pdf} \caption{Normalized average waveform from Cluster 17 (dashed purple) and the average AFT per time of these waveforms (solid red). For this illustration, waveforms with a length of 2.4 microseconds were selected.} \label{fig:mergedS1S2} \end{figure}
+
+
+\subsubsection{Cluster 7: Unknown cluster}
+
+Cluster 7 exhibits characteristics suggesting it may consist of two overlapping clusters. However, the cluster is surrounded by data we aim to exclude from the analysis, so further separation of this cluster was not prioritized. As shown in Fig.~\ref{figs:cluster_7_spatial_dis}, this cluster exhibits an unusual spatial distribution, with AFT values indicating two distinct populations.
+
+Analysis of the waveforms within this cluster does not provide significant insights, as they exhibit characteristics of both S1 and S2 signals. The exact nature of this population remains unclear, requiring further investigation to determine its origins.
+
+\begin{figure}[htpb] \centering \includegraphics[width=8.0cm,keepaspectratio]{figs/cluster_7_aft_plot.png} \caption{Spatial distribution of Cluster 7 with AFT values represented as a color bar. The figure reveals two overlapping distributions within this cluster. One distribution, characterized by higher AFT values, appears localized along $x = y$ and $x = \frac{1}{y}$, with fewer points in the center. In contrast, another population is concentrated near the center, with an AFT of approximately 0.6.} \label{figs:cluster_7_spatial_dis} 
+\end{figure}
+
+\subsubsection{Cluster 8: Channel cross-talk}
+
+Cluster 8 is characterized by a median AFT of 1, with 64.2\% of peaks in this cluster also exhibiting an AFT of 1. Furthermore, these data points are concentrated along the edges and diagonals of the PMTs, where position values for $x$ and $y$ are either 0 or 1, or where $x = y$ and $x = 1/y$ are most prevalent. As shown in Fig.~\ref{figs:cluster_8_spatial_hist}, this spatial distribution suggests significant cross-talk between channels.
+
+Interestingly, the number of peaks at $x = 1$ is nearly twice that at $x = 0$, suggesting potential interference from external electronic equipment. Given the uncertainty in their origin, we classify this population as unknown. Future investigations into these signals and their origins are recommended.
+
+\begin{figure}[htpb] \centering \includegraphics[width=8.0cm,keepaspectratio]{figs/cluster_8_xy_density_hist.png} \caption{Spatial histogram of Cluster 8, showing events concentrated along the edges and diagonals of the PMTs, suggesting a possible PMT-related effect.} \label{figs:cluster_8_spatial_hist} \end{figure}
+
+% S1 aft 0.12, s2 = 0.42
+
+\subsubsection{Cluster 12 and 13: Unknown Cluster}
+
+Clusters 12 and 13 contain events with areas under 100\,PEs. These populations appear to be mixtures of different signals without any distinguishing features of relevance to the physics analysis. As such, we classify these clusters as unknown and exclude them from further analysis.
+
+\subsubsection{Cluster 14: PMT effects}
+
+Cluster 14 exhibits spatial characteristics similar to Cluster 8 but lacks the high AFT values. The average AFT for this cluster is approximately 0.5. At least one of the top four PMT channels did not detect photons in these events. This population is attributed to PMT-related effects, given its median uncorrected area of approximately 6\,PEs and waveform shapes inconsistent with particle interactions in xenon. These events are excluded from the primary analysis since they do not contribute to understanding the detector’s physics performance.
+
+\subsubsection{Cluster 22: Possible PMT Interactions}
+
+Cluster 22 exhibits a distinctive X-Y spatial distribution that aligns with the coverage of individual PMT channels at the top of the detector, as shown in Fig.~\ref{fig:cluster7}. This suggests that the signals in this cluster are primarily influenced by effects associated with the top PMT array. This hypothesis is further supported by the area fraction top (AFT) values, which remain consistently at or near 1, indicating that nearly all detected light originates from the top PMT array.
+
+Initially, we hypothesized that these signals originated from muons passing through the PMT glass. However, the observed event rate is inconsistent with expected muon interaction rates. Using the \acrshort{csom} characterization method, we identified this previously unexamined topology, demonstrating the effectiveness of SOMs in uncovering subtle detector effects.
+
+\begin{figure}[!h] \centering \includegraphics[width=8.0cm,keepaspectratio]{figs/cluster_21_xy_distibution.pdf} \caption{Spatial distribution of Cluster 22, showing overlap with the four channels of the square PMT tested in XAMS.} \label{fig:cluster7} \end{figure}
+
+
+\subsubsection{Cluster 23: PMT Afterpulses}
+
+Cluster 23 is identified as containing signals resulting from PMT afterpulsing. Afterpulsing occurs when residual gas molecules in the PMT vacuum are ionized by photoelectrons and drift to the photocathode, generating a delayed signal. In a traditional TPC, the specific elements contributing to this effect can be identified based on the afterpulse delay time relative to the primary signal. The shape of this PMT however makes this analysis impossible as the drift length is reduced.
+
+To validate this characterization, we examined a 2-D histogram of interaction area versus delay time. Examples of PMT afterpulsing waveforms are shown in Fig.~\ref{fig:afterpulse}. Afterpulsing is a well-characterized phenomenon in PMT-based experiments, and the \acrshort{csom} identified this topology without prior knowledge or targeted analysis. This highlights the versatility of the \acrshort{csom} in recognizing standard detector effects and informing subsequent studies.
+
+We conclude this section be summarizing the key takeaways of the clusters found with the SOM-aided analysis. While we seemed to have a reduction in S1 efficiency with the SOM-aided classification this was countered by an increase in total events. We found several interesting clusters that point to unique feautres related to the PMTs used for this data that can be further analyzed and evaluated for their use in future experiments. Futhermore, we were able to characterize the signals in more that just S1, S2 and unknown giving analysts a lot more flexibility for data selection. As such the SOM-aided classification approach can be useful even for commission stage data of the experiment as it provides an accurate classification characterize the signals such that unexpected features of the detector can be quickly notices.
+
+\begin{figure}[!hbp] 
+\centering \includegraphics[width=8.0cm,keepaspectratio]{figs/afterpulse_wf.pdf} \caption{Examples of Cluster 23 signals exhibiting characteristics of PMT afterpulsing. A 2-D histogram of interaction area versus delay time validated this classification.} \label{fig:afterpulse} 
+\end{figure}
+
+% It might be worth noting that in these small detectors with lower drift time shape based discrimination is even more important
+\begin{table*}[t]
+\centering
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{Type} & \multicolumn{2}{|c|}{CSOM-aided characterization} & \multicolumn{2}{|c|}{Current Method} \\
+\hline
+& available & [\%] of the total data  & available &  [\%] of the total data\\
+S1 & \checkmark & 46.15\% &  \checkmark & 46\%  \\
+\hline
+S2 & \checkmark & 20.22\% &  \checkmark & 23\%   \\
+\hline
+Narrow S2s & \checkmark & 10.72\% &  x & x    \\
+\hline
+Multi-scatters & \checkmark & 0.40\% &  x & x \\   
+\hline
+Afterpulses & \checkmark & 0.21\% &  x & x
+    \\
+\hline
+Merged S1s and S2s & \checkmark & 0.12\% &  x & x    \\
+\hline
+Localized S2s & \checkmark & 3.07\% &  x & x   \\
+\hline
+PMT interactions  & \checkmark & 0.57\% &  x & x  \\
+\hline
+Photo-ionization electrons  & \checkmark & 17.70\% &  x & x   \\
+\hline
+Unknowns  & \checkmark & 0.84\% &  \checkmark & 31\%   \\
+\hline
+\end{tabular}
+\caption{Comparison between SOM-aided characterization and current waveform characterization method.}
+\label{table:comparison}
+\end{table*}
+
+
+
+
+\subsection{Conclusions}
+\label{sec:discussion}
+
+Through the analysis of the clusters mapped onto the 2-D grid, we determined the nature of each population. The CSOM-aided characterization demonstrates efficiency comparable to the current method for S1 and S2 signals while offering additional insights. By distinguishing different types of S2 signals, it provides a more detailed understanding of the data than the current method. The \acrshort{csom} method effectively identifies MS events using only waveform data, potentially improving upon current methods that require additional information. The detection of merged S1 and S2 signals reveals potential limitations in the current splitting algorithm. The \acrshort{csom} method identifies previously unseen topologies, such as the top PMT effect, demonstrating its utility in uncovering novel detector effects. Overall, the \acrshort{csom} characterization approach enhances waveform-based event classification, offering a more detailed and data-driven alternative to traditional methods.
+
+Next-generation LXe-TPC experiments~\cite{Darwin2023, Baudis:2024jnk} aim to expand the physics program by enhancing dark matter direct detection through charge-only (S2-only) analysis. Relaxing the requirement of an observed S1 signal relies on a robust S2 classification method that can identify signals from a single extracted electron. Given the granularity that a \acrshort{csom} provides, it is an ideal candidate for characterizing few-electron signals. Beyond dark matter searches, a key physics goal is the search for neutrinoless double beta decay in $^{136}$Xe. Studies indicate that achieving high energy resolution near $Q_{\beta\beta}$ significantly enhances sensitivity~\cite{PhysRevLett.120.072701,1Tenergyres}. Identifying any topologies where the energy can be mis-reconstructed due to waveforms being merged or split would be extremely beneficial for the analysis. Table~\ref{table:comparison} compares topologies identified by a \acrshort{csom} with those detected by conventional signal characterization methods in current LXe-TPC experiments. As demonstrated, this approach provides significant benefits for both current and future LXe-TPC demonstrators.
+
+In summary, this work presents the first implementation of a Self-Organizing Map for data characterization of a dual-phase LXe TPC during the commissioning stage of the XAMS detector. This data-driven method provides an efficient an automatic way of
+signal characterization by mapping high-dimensional data
+onto a 2D grid with an easy data visualization making this approach extremely useful for analyzing data.
+
+\newpage

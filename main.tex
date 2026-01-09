@@ -1,0 +1,508 @@
+\documentclass[12pt]{article}
+\usepackage{blindtext}
+\usepackage{multicol}
+\usepackage{xfrac}
+\usepackage{lipsum}
+\usepackage{bm} %allows \bm{} in math mode to create bold symbols
+\usepackage{gensymb} %allows use of symbols like \degree
+\usepackage{comment}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{textgreek}
+\usepackage{pdfpages}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{lipsum}
+\usepackage{booktabs}
+%\usepackage{acronym}
+\usepackage[utf8]{inputenc}
+\usepackage[acronym,automake]{glossaries}
+\setlength{\heavyrulewidth}{1.5pt}
+\setlength{\abovetopsep}{4pt}
+\usepackage{multirow}
+\usepackage{cite}
+\usepackage{hyperref}
+%
+%\usepackage[caption=false]{subfig}
+\usepackage{setspace}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\definecolor{orange}{rgb}{1,0.5,0}
+%\usepackage[mtpscr,mtpccal,mtpfrak]{mtpro2}
+
+
+\usepackage{blindtext}
+\doublespacing
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
+
+%\shorttitle{RXJ1334.3+5030}
+
+% Command so Chris can add comments.
+\newcommand{\CT}[1]{\textcolor{Orange}{{[\bf CT: #1]}}}
+
+
+\makeglossaries
+
+% To make life easier I will adopt a convetion for the acronyms for the glossary by using the first 3 letters of the first word and the initial for the rest with all initials capitalized
+
+\newacronym{ac}{AC}{Accidental Coincidences}
+
+\newglossaryentry{AccC}
+{
+        name=accidental coincidence,
+        description={When an S1 is matched with an S2 of a different origin to form an event due to misconstruction of the interaction.}
+}
+
+%\newacronym{bipo}{BiPo}{$^{214}$Bi $^{214}$Po}
+
+\newacronym{bmu}{BMU}{Best Matching Unit}
+
+\newglossaryentry{BesMU}
+{
+        name=accidental coincidence,
+        description={When an S1 is matched with an S2 of a different origin to form an event due to misconstruction of the interaction.}
+}
+
+\newacronym{ces}{CES}{Combined Energy Spectrum}
+
+\newacronym{ceνns}{CEνNS}{coherent elastic neutrino-nucleus scattering}
+
+\newacronym{cmb}{CMB}{Cosmic Microwave Background}
+
+\newacronym{cp}{CP}{Charge-parity}
+
+\newacronym{cs1}{cS1}{Corrected Scintillation Signal}
+
+\newglossaryentry{CorS1}
+{
+        name=corrected scintillation signal,
+        description={S1 signal after the corresponding corrections have been applied}
+}
+
+\newacronym{cs2}{cS2}{Corrected Ionization Signal}
+
+\newglossaryentry{CorS2}
+{
+        name=corrected ionization signal,
+        description={S2 signal after the corresponding corrections have been applied}
+}
+
+\newacronym{daq}{DAQ}{Data Acquisition System}
+
+\newacronym{dm}{DM}{Dark Matter}
+
+\newacronym{er}{ER}{Electronic Recoil}
+
+\newglossaryentry{EleR}
+{
+        name=electronic recoil,
+        description={S1 signal after the corresponding corrections have been applied}
+}
+
+
+\newacronym{gxe}{GXe}{Gaseous Xenon}
+
+\newacronym{lce}{LCE}{Light-Collection Efficiency}
+
+\newacronym{lngs}{LNGS}{Laboratorio Nacionale de Gran Sasso (Gran Sasso National Laboratory)}
+
+\newacronym{lxe}{LXe}{Liquid Xenon}
+
+\newacronym{ml}{ML}{Machine Learning}
+
+\newacronym{nb}{NB}{Natural Breaks}
+
+\newacronym{nn}{NN}{Neural Network}
+
+\newacronym{nr}{NR}{Nuclear Recoil}
+
+\newacronym{osg}{OSG}{Open Science Grid}
+
+\newacronym{pe}{PE}{Photo electron}
+
+\newacronym{pmt}{PMT}{Photo-Multiplier Tube}
+
+\newacronym{ptfe}{PTFE}{polytetrafluoroethylene (Teflon)}
+
+\newacronym{psd}{PSD}{Pulse Shape Discrimination}
+
+\newacronym{tpc}{TPC}{Time-Projection Chamber}
+
+\newacronym{rcc}{RCC}{Research Computing Center}
+
+\newacronym{rse}{RSE}{Rucio Storage Element}
+
+\newacronym{s1}{S1}{Scintillation Signal}
+
+\newacronym{s2}{S2}{Ionization Signal}
+
+\newacronym{se}{SE}{Single Electron}
+
+\newacronym{som}{SOM}{Self-Organizing Map}
+
+\newacronym{csom}{CSOM}{Conscience Self-Organizing Map}
+
+\newacronym{sr}{SR}{Science Run}
+
+\newacronym[see={svmach}]{svm}{SVM}{Support Vector Machine}
+
+\newglossaryentry{svmach}
+{
+        name=support vector machine,
+        description={Is a mark up language specially suited for 
+scientific documents}
+}
+
+\newacronym{vq}{VQ}{Vector Quantization}
+
+\newacronym{wimp}{WIMP}{Weakly-Interactive Massive Particle}
+
+\newglossaryentry{GasX}{
+  name={Gaseous Xenon},
+  description={A noble gas used as the detection medium in xenon-based dark matter experiments}
+}
+
+\newglossaryentry{LigCE}{
+  name={Light-Collection Efficiency},
+  description={The fraction of scintillation photons successfully detected by the photomultiplier tubes}
+}
+
+\newglossaryentry{MacL}{
+  name={Machine Learning},
+  description={A subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed}
+}
+
+\newglossaryentry{NeuN}{
+  name={Neural Network},
+  description={A computational model inspired by biological neural networks that can learn complex patterns in data}
+}
+
+\newglossaryentry{NucR}{
+  name={Nuclear Recoil},
+  description={The recoil of an atomic nucleus following a collision, particularly relevant for WIMP dark matter interactions}
+}
+
+\newglossaryentry{OpeSG}{
+  name={Open Science Grid},
+  description={A distributed computing infrastructure providing computational resources for scientific research}
+}
+
+\newglossaryentry{PhoE}{
+  name={Photoelectron},
+  description={An electron emitted from a material after absorbing a photon of light}
+}
+
+\newglossaryentry{PhoMT}{
+  name={Photo-Multiplier Tube},
+  description={A highly sensitive light detector that amplifies the signal from individual photons}
+}
+
+\newglossaryentry{poltef}{
+  name={Polytetrafluoroethylene (Teflon)},
+  description={A synthetic fluoropolymer used as a reflective coating in xenon detectors}
+}
+
+\newglossaryentry{SciS}{
+  name={Scintillation Signal},
+  description={The light signal produced by ionized xenon atoms de-exciting to their ground state}
+}
+
+\newglossaryentry{IonS}{
+  name={Ionization Signal},
+  description={The electric signal produced by drifting ionization electrons in the xenon detector}
+}
+
+\newglossaryentry{SinE}{
+  name={Single Electron},
+  description={The response from a single photoelectron, used as a fundamental unit for detector calibration}
+}
+
+\newglossaryentry{SelOM}{
+  name={Self-Organizing Map},
+  description={An unsupervised machine learning algorithm that creates a low-dimensional representation of high-dimensional input data}
+}
+
+\newglossaryentry{ConSOM}{
+  name={Conscience Self-Organizing Map},
+  description={A variant of the Self-Organizing Map that includes a conscience mechanism to improve training efficiency and convergence}
+}
+
+\begin{document}
+
+
+
+
+    \begin{titlepage}
+    \centering
+    
+    \vspace*{\fill}
+    
+    \vspace*{0.5cm}
+    
+    \huge\bfseries
+    PhD Thesis\\
+    
+    \vspace*{0.5cm}
+
+    \Large Luis Sanchez \\
+    
+    \vspace*{\fill}
+    
+    \end{titlepage}
+
+\input{acknowledgement}
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+%\printglossary[type=\acronymtype]
+\printacronyms
+
+\newpage
+
+\glsaddall
+\printglossary
+
+\newpage
+
+\begin{abstract}
+In progress.
+\end{abstract}
+
+%\setcounter{chapter}{18}
+\section*{S: Summary of Dark Matter}
+\addcontentsline{toc}{section}{S: Summary of Dark Matter}
+\input{dm_summary}
+
+\input{Introduction}
+
+\input{XENONnT_background}
+
+\input{Software_Infrastructure}
+
+\input{ML_background}
+
+\input{SOM_XENONnT}
+
+\input{XAMS_detector}
+
+\input{Conclusion}
+
+\addcontentsline{toc}{section}{References}
+
+\clearpage
+
+
+\bibliographystyle{JHEP}
+% \bibliographystyle{spmpsci}      % mathematics and physical sciences
+% \bibliographystyle{spphys}       % APS-like style for physics
+\bibliography{literature_codefix}
+%\bibliography{literature}
+
+\appendix
+
+\section{Appendix}
+
+\section{SR0 tests.}
+\label{SR0_test}
+
+\subsubsection{Data Driven Tests}
+
+We need to conduct several data driven tests in order to ensure that the SOM is not negatively impacting our analysis in a way that could be harmful. In order to do this we need to look at some of our calibration sources like the Radon calibration to look at the electronic Recoil band ( and maybe even the NR band) to confirm we get the behaviour we expect and that there are no outliers. It would also be useful to see what percentage of events are different from the normal classification as well as the why these events are different. While we do this, we might also want to investigate if there are any position reconstruction biases in our data. We do not expect all these results to be perfect as all of our cuts an algorithms are tuned to the current peaklet classification algorithm. 
+
+\subsubsection{Radon Data}
+
+We use a Thorium 228 source which effectively releases $^{220}Rn$ as one of our calibration sources we use in XENONnT. This calibration source produces a continuous energy spectrum of ER interactions and some of its daughter products decay via beta decay. As such it is extremely useful as a calibration source as it helps us find the expected ER band use for the main XENON analysis making it a powerful tool in our kit to distinguish ER for NR interactions. (The plots of us making the ER band needs to be reproduced with the SOM trained on Dec 2023).
+
+As we can see we got a recreation of the ER band with the SOM-aided peaklet classification algorithm, with very few of the resulting events being different between the two classification. This is a great sanity check to ensure that the SOM-aided classification is not misclassified things fundamentally to the point that important analysis like these are not affected.
+
+\subsubsection{YBe Data}
+
+\subsection{Simulation based tests}
+
+For the simulation data we mainly looked at 3 types of data simulation. We simulated S1's and S2's in a wide energy spectrum and we simulated single electrons. Lets start our Analysis with the simulated S1's.
+
+\subsubsection{S1 classification and Bias analysis}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=10cm]{figs/straxen_sim_s1.png}
+    \includegraphics[origin=c, width=10cm]{figs/som_sim_s1.png}
+    \caption{Results of simulation data with the current classification algorithm (top) and the som-aided classification (bottom). These figure depicts the S1 signals according the current classification algorithm. The green points indicate which signals were categorized as S2's}
+    \label{sim_s1}
+\end{figure}
+
+
+%% Maybe we need a figure of the acceptance with a log scale on the x-axis up to 500 PEs%%
+
+The current peaklet classification algorithm seems to misclassified S1's in a particular region, usually signals with area between 100 and 400 [[PE]]s making this classification slightly biased since it has an area dependence for these signals. On the other hand the SOM aided-classification may have more misclassified signals but it does not share this bias we saw before. In our experiment however we are particularly concerned about biases in our low area region so we usually restrict our analysis to signals of under 20 PEs to estimate the S1 peak reconstruction.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=10cm]{figs/s1_acceptance_bais_tc2.png}
+    \includegraphics[origin=c, width=10cm]{figs/s1_acceptance_bais_tc3.png}
+    \includegraphics[origin=c, width=10cm]{figs/s1_acceptance_bais_summary.png}
+    \caption{**S1 efficiency plots**: These plots help confirm that using simulations,the S1 efficiencies are not affected in a significant way by the new classification algorithm.}
+    \label{s1_efficiency_bias}
+\end{figure}
+
+As we can see from the figures above the SOM classification has an acceptance rate for S1 signals that is always at least within the error bars of the [[current peaklet classification algorithm]]. and this is both for the [[tight coincidence]] (tc) of 2 and 3 respectfully. This tells us that, at the very least, we are not baising ourselves with this technique, and the acceptance seems to have a more homogeneous distributions for the S1 miss-classifications which could make our results less bais. The acceptance rate is a bit of a broad term which only looks at the peak that were correctly classified and reconstructed, but it might also be of interest to see what happened to the peaks that failed the acceptance, these we can break down into a few possible categories for S1's (name categories).
+
+The acceptance bias however is not our only concern, we also need to look at any potential peak reconstruction bias, but what do we mean by this? In our experiment all photons that get produced by a particular interaction will not necessarily make it to our data analysis, this could be due to several reasons, like not all photons reaching the PMTs. Due to this we need to make a distinction between the number of photons produced in the interaction and the number of photons detected which correspond to a given interactions. Ideally we do not want a case were we tend to have a bias where we are either overestimating or underestimating the number of photons detected. To check this we can make a quantity where we divide the number of (reconstructed area of a peaklet * (some conversion factor)/ \# of photons detected) -1. In this case a value of 0 means no reconstruction bias. Of course due to the nature of our experiment some bias is expects. Our goal here is not to have the som-aided classification have no reconstruction bias but simply to make sure its reconstruction bias is not worse than the current algorithm, which, according to the table bellow, we seem to have accomplished.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/s1_reconstruction_bais.png}
+    \caption{caption in work.}
+    \label{s1_reconstuction_bias}
+\end{figure}
+
+\subsubsection{S2 classification and Bias}
+
+We performed a similar analysis for the S2 classification. Keeping in mind we had to sets of S2 signals, the single electrons and the continuous. We will not be showing the corresponding plots for both of these datasets as some of the results simply need to be stated. For the S2 continuous spectrum we found no significant acceptance nor reconstruction bais. For the single electrons we also found no significant acceptance nor reconstruction bais but we did find our som-aided classification algorithm did a better job at classifying SE.
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/SE_sim_classification_straxen.png}
+    \includegraphics[origin=c, width=16cm]{figs/SE_sim_classification_som.png}
+    \caption{Peaklet classification of simulated SE with both the current classification (top) and the SOM classification (bottom).}
+    \label{s1_reconstuction_bias}
+\end{figure}
+
+As we can see the straxen classification pretty much misclassified all single electrons whose rise time is less than 90 ns, which results in the som-aided classification having a better single electron classification result. Now this is extremely important for our experiment as a lot of our efforts have been in reducing the number of misclassified SE. This is because misclassified SE's can be paired up with S2 interactions and result in the reconstruction of a fake interaction which could lead to a false WIMP event, and in a rare event search, these kinds of false positives must be avoided as much as possible. As a result, even a small improvement in the SE classification is substantial as it reduced the rate of these mismatched events, we usually refer to such events as accidental coincidences or ACs.
+
+\subsubsection{AC study}
+
+In order to study how the rate of accidental coincidences is affected by our classification we need to first get events which we know are accidental coincidences. We can actually get these events directly from data by generating a data set of only accidental coincidences. To do this we simply modify the straxen code and make the maximum drift time twice as long as its current value. What this does is that it allows for the formation of events that are nonphysical (ones were the z position of the interaction is longer than the length of the TPC). Then we simply select events with z position bigger than the detector length x 1.2 (to allow for some room for miscalculated z-position events). By selecting events with these criterion we can ensure that all events we see in this data set are AC.
+
+The key point in this analysis is that an improvement classification will help is in both reducing the AC rate an increasing the efficiency at low energies. For this study, we used 97 background runs. Improving the classification does both of these things simultaneously as our current peak matching algorithm simply matches the S1 and S2 with the highest area. However, if we have a low energy S1 and a misclassified SE with a higher area, we end up matching a real S2 to a SE, however, if the SE is correctly classified we are able to recover this lower energy S1, thus recovering a low energy interaction while reducing the AC rate!
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=16cm]{figs/fully_fake_AC_plots.png}
+    \caption{Histogram of AC rate with different cuts The cuts apply sequentially from left to right. We see each subsequent cut reduced the bin sizes. Since our current classification does a better job at classifying single electrons there is a higher change these S2s get matched to smaller S1's which is increasing the size of the bins for the 2 fold coincidences are low PEs. This data can the be removed by other existing cuts, reducing the ACs. For the last requirement, we only select events where both the current peaklet classification methods and SOM classification agree that the data is indeed an S1. We managed to lower the AC rate overall with this check!}
+    \label{s1_reconstuction_bias}
+\end{figure}
+
+\subsection*{Background Data}
+
+\textcolor{red}{Explain each background in figure 9 (temp), what it is, where it comes from and how do we mitigate it.}
+Our background mainly comes from the materials used to build the detectors such as the  $^{222}Rn$ and its daughter products. This material is extremely hard to remove from materials as it is abundant everywhere but we try to source the materials from our detector that have as little $^{220}Pb$ as possible.
+\textcolor{red}{This section needs to be expanded.} Krypton is another source of background for us which is a byproducts of radon which is mixed into the xenon itself. This background can also come from the materials within the TPC itself which as just labeled as "material". Some if it comes from different xenon isotopes which are radioactive. Some come from issues in our data processing pipeline which create accidental coincidences (AC) and some from solar neutrinos. Understanding our background is of key importance as this is what enables us to find "anomalous"  interactions such as WIMPs interacting with the xenon atoms. Background interactions are the most common kind of interactions we will see in our detectors an is the main data we will look at in our analysis.
+
+\subsubsection*{Material Background}
+
+The walls within the XENONnT TPC are made out of PTFE, which we choose for its high reflectivity to maximize light collection. This material absorbs isotopes from the decay chain of $^{222}Rn$ from the atmosphere. Hence most of our material background comes from out PTFE panels. We mitigate these material background by doing fudicial volume cuts since this is coming from the edges of the detector. At low energies, the surface background is primarly dominated by the $\beta$ decay of $^{210}Pb$.
+
+\subsubsection*{$^{214}Pb$}
+
+\subsubsection*{Krypton}
+
+\subsubsection*{Xenon}
+
+\subsubsection*{ACs}
+
+\begin{figure}
+    \centering
+    \includegraphics[origin=c, width=10cm]{figs/ted_bkg_fit_xenon.png}
+    \caption{Caption}
+    \label{xenonnt_background}
+\end{figure}
+
+\subsection*{Calibration Data}
+
+In order to confirm that our data processing pipeline is working as intended we need to confirm our ability to reconstruct the energy of interactions. We do this by injecting mono-energetic radioactive isotopes into our detector. Once injected, these radioative particles spread in the whole TPC volume and we try to reconstuct the energy based on the known decay energies of the particles. Some of such sources include $^{83m}$Kr, $^{37}$Ar and YBe. Both the $^{83m}$Kr and $^{37}$Ar decays result in ER while YBe results in a NR interaction. 
+
+$^{83m}$Kr and $^{37}$Ar are great calibration sources as they are noble gasses, which reduced the chances of chemical reactions happening in the detector, they mix in easily with the xenon, are easy to removed from our detector and have a short lifetime. Furthermore, with both sources we can see the detector response at a variety of energy scales. $^{37}$Ar decays into $^{37}$Cl via electron capture. This results in vacancy in the inner electron shell of the atom and when that is filled by an electron in a higher shell it produced a photon of 2.82 KeV (X-ray). This then interacts with the surrounding xenon atoms electrons, resulting in electronic recoils which emit photons that are detectable by our PMTs. This is particularly useful for low energy calibration. $^{83m}$Kr on the other has a decay cascade emitting photons at 9.41 and 32.1 keV respectively. This provides a calibration source at a useful range of energies. This source also provides a challenge to our ability to separate peaks as the decay time between the first and second decay is only 0.15 micro seconds. This means that the two peaks are often merged which helps us understand the limitations of our peak splitting algorithm.
+
+The third and last source of internal calibration is the radon 220 source. which provides ER recoils at a full range of energies as the beta decay means the resulting daughter particles can have a wide range or energies since some amount will be carried off by a neutrino. This is mainly used to construct our ER band.
+
+We also have external sources of calibration such as AmBe and YBe. Both of which produce NR. YBe is used to understand our detector response to low energy NR, useful for neutrino analysis and the AmBe provides a wide range of NR recoils which can be used to compute our NR band.
+
+These are the main calibration sources we use in the XENONnT experiment. The calibration sources fall into one of two categories, either to help us calibrate our energy reconstruction at different energies or to help build out NR/ER band which is crutial for a WIMP search.
+
+\section{MLP}
+\label{mlp}
+
+\subsection{MLP Conceptual Overview}
+
+One of the most common supervised learning models is the Multi-Layer Perceptron (MLP), a type of artificial \acrfull{nn}. An MLP can be conceptually understood as a series of processing units, where information is refined layer by layer as we can see in fig. \ref{mlp_diagram}. The input layer receives the data, the hidden layers refine understanding by extracting features, and the output layer produces the final decision or classification ~\cite{Werbos1974BeyondRegression, Rumelhart1986Backprop}.
+The power of MLPs lies in two key mechanisms:
+\begin{enumerate}
+    \item Backpropagation – Uses gradient decent to minimize prediction error by updating the weights and baises.
+    \item Nonlinear activation functions – These enable the network to model non-linear relationships in data.
+\end{enumerate}
+
+When we pass a data vector to an MLP it will compute an output vector for this input, then we compute the error between the obtained outcome and the target outcome. We can use this error to compute the gradient decent to minimize the error for the next round, which is used to update the weights.
+
+\subsection{Mathematical Formulation}
+
+Having presented a conceptual overview, we now provide a mathematical formulation of the MLP. Let $X$ be a set of input vectors and their corresponding labels $(x_i^k, y^k_i) \in X$ be the i$^{th}$ element of the k$^{th}$ input vector/label where $i=0,1, ... N$ so $x, y \in \mathbb{R}^N$. Let $^{l}NPE$ be the number of processing elements or neurons in layers $l$ where $0 \leq l < L$ and the weight vectors ${}^lw_{ij}$ denotes the weight connecting the $i^{th}$ node in the $(l-1)$ layer to the $j^{th}$ node in layer $l$. Let $^ly^k_i$ be the output of $PE_i$ in layer $l$ in response to the pattern $k$ defined as 
+
+\begin{equation}
+    {}^ly^{k}_i = f\left(\sum_{j=0}^{{}^{(l-1)}NPE} {}^lw_{ij} \cdot {}^{(l-1)}y^{k}_j\right),
+\end{equation}
+
+where f is a user defined activation function. We can now define the error signal as $^Le^k_i=D^k_i - ^Ly^k_i$ where $D^k_i$ is the expected outcome for input pattern k and the instantaneous error will be the mean square error $\frac{1}{2}^Le^k_i$. From here, we can state the recursive formula for computing the gradient 
+
+\begin{equation}
+^l\delta^k_i = 
+\begin{cases}(D^k_i - \text{ } {}^{L}y^{k}_{i})  \cdot {}^{L}y^k_i, & \text{if } l = L  \\
+{}^{l}y^k_i \cdot(\sum_{m=0}^{^{l+1}NPE} {}^{l+1}\delta^k_m \cdot{}^{l+1}w_{mi}), & \text{if } 0 \le l < L 
+\end{cases}
+\end{equation}
+
+which lets us update all weights in response to the error. Using the value we arrive at the weight updating equation
+
+\begin{equation}  
+    {}^l w_{ij}(t+1) - {}^l w_{ij}(t) = {}^l \Delta w_{ij} = \gamma \cdot {}^l\delta^k_i \cdot {}^{l-1}y^k_i,
+\end{equation}
+
+where $\gamma$ is the monotonically decreasing learning rate such that $0 < \gamma < 1$. We repeat this learning process recursively until we are able to reduce a loss function defined by the user bellow a desired value or after a predefined number of iterations ~\cite{Rumelhart1986Backprop}.
+
+
+%and let $^lb$ be the bias term of layer l, a learnable constant parameter added to the weight vectors before the activation function is applied. The weights vectors between nodes will have the same dimensionality as the input vector so $w_{ij}^{(k)}$ denotes the weight connecting the $i^{th}$ node in layer $(k-1)$ to the $j^{th}$ node in layer $k$, where $k = 1, 2, \dots, M$ and $M$ is the number of layers. To compute the value of the first node of the input layer, we compute $z_j^{(k)} = \sum_i w_{ij}^{(k)} a_i^{k-1} + b_j^{(k)}$ where $a^{(0)}=x$, and apply a non-linear activation function $f$ to obtain $a_j^{(k)} = f(z_j^{(k)})$. We repeat this for all weights until we reach the output layer. Once we do, we get the computed outcome $y$, and we compute the value of the loss function $L(y,\hat{y})$, which computes the difference between $y$ and the expected target $\hat{y}$. The weights are then updated using gradient descent: $w \leftarrow w - \eta , \frac{\partial L}{\partial w}$, where $\eta$ is the learning rate. This cycle is repeated until we have a small enough error as decided by the analyst~\cite{Rumelhart1986Backprop}.
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 16cm, height=14cm, keepaspectratio]{figs/ml_sec/mlp_explained.png}
+    \caption{Diagram showing the structure of the MLP. The first layer corresponds to the inputs, the middle layers are the hidden layers that transform the data, and the output layer computes the result of the transformations.}
+    \label{mlp_diagram}
+\end{figure*}
+
+Supervised neural network techniques, such as the MLP, have been extremely valuable across many fields; however, they have several limitations.  First, these techniques assume we have a representative sample of a labeled dataset that covers all relevant cases. Second, supervised methods are limited to predefined labels and, therefore cannot identify `unknown unknowns'—novel patterns or anomalies not represented by the training labels. When labeled data is unavailable or when we aim to characterize data with an unknown structure, unsupervised techniques become essential. Popular clustering algorithms in this category include K-means, spectral clustering, hierarchical clustering, amongst others. In the space of neural networks Self-Organizing Maps (SOMs), both of which partition the data-space according to their underlying structure.
+
+\section{SVM Mathematical Description and Parameter Optimization}
+\label{svm}
+
+We used the sklearn library to train an SVM using the SOM weights as inputs. In our study we applied the radial basis function (RBF) as our kernel, which involves using an exponential as the kernel $K(x_i,x_j) = e^{-\gamma ||x_i-x_j||^2}$. We optimized the hyperparameters of the RBF-kernal SVM; C for regularization and $\gamma$ for the kernel width using a randomized search with stratified shuffle $k$-fold corss-validation. Hyperparameters were sampled from the log uniform priors C $[10^{-2}, 10^3]$ and $\gamma$ $[10^{-4}, 10]$, centered around the standard heyristics for RBF width. For each Sample pair (C,$\gamma$) a model was trained for $k$-1 folds and evaluated on the held-out fold. The mean validation score across the $k$=5 folds was used as the objective. The best pair (c', $\gamma$') maximizes 
+
+$$\frac{1}{k} \sum_{i=1}^k Score_i(C,\gamma)$$
+
+after which the pipeline was refit on the full training set. Potential class imbalance issues was addressed setting the parameter class\_balance=`balanced', which scales the loss by $w_j = \frac{n}{kn_j}$ for class j.
+
+This parameter optimization is training SVMs for each pair of sampled parameters, the SVM itself is computed by finding the optimal set of $\alpha 's \in A$ that maximize the equation
+
+$$W(\alpha) = \sum_{i=1}^n\alpha_i - \frac{1}{2} \sum_{i=1}^N \sum_{j=1}^N \alpha_i \alpha_j y_i y_j K(x_i, x_j)$$
+
+subject to the constraint
+
+$$\sum_{i=1}^N\alpha_iy_i = 0 \text{ and } a \leq \alpha_i \leq C, for i = 1, ...,n $$
+
+for all set of points $(x_i,x_j)$ in the data set. Here, the alphas are understood as Lagrange multiplies which will all be 0 except for those corresponding to the support vectors. $y_i$ represents the label for a given inputs $x_i$. After making many SVMs and finding the optimized C and $\gamma$ we run the SVM one more time with these parameters and solve for the set of $\alpha$'s that maximize the equation subjected to the contraints. The optimized values found for C and $\alpha$ where 22.7087 and 33.1869 respectively with a total classification accuracy of 99\%.
+
+\end{document}

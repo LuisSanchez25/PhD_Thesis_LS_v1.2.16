@@ -1,0 +1,266 @@
+\section{Unsupervised Machine learning}
+
+XENONnT's signal classification challenge is distinguishing rare physics events from backgrounds without labeled training data. This demands unsupervised machine learning approaches that can discover structure in high-dimensional waveform data. This chapter establishes why Self-Organizing Maps provide the optimal solution, contrasting them with supervised methods that require unavailable ground truth and simpler unsupervised methods that fail to capture the complex topology of our signal distributions.
+
+\acrfull{ml} is a set of algorithms that can learn from data and perform tasks without explicit instructions. ML has a wide variety of use-cases, including clustering, feature extraction, learning patterns, and finding hidden associations in data, and making predictions \cite{Longo_2019}.  These techniques have revolutionized numerous scientific and analytical domains, offering powerful tools for automation, pattern discovery, and classification. In healthcare, machine learning models are used to predict disease progression, optimize treatment plans, and improve the recovery rates of patients~\cite{Dixon2024AIReview}. In astronomy, they are used for exoplanet search and photometric redshift estimation~\cite{CarrascoKind2014SOMz}. In physics, they are used for event classification and anomaly detection~\cite{PhysRevLett.132.081801}. ML methods have great flexibility in the type of data they can analyze, such as medical records~\cite{Blechman2024ML_EHR}, telescope images~\cite{Higson2019BayesianSparse}, and time series waveforms~\cite{Rautio2023WaveformPrediction}, among others. Machine learning can handle high-dimensional, complex detector data produced by detectors such as XENONnT.
+
+In biology, machine learning techniques helped solve the long-standing problem of predicting protein structures from amino acid sequences, most notably through the deep learning model AlphaFold. Because a protein's function depends on its three-dimensional structure, the ability to predict this shape is a major scientific advance. Previously, predicting protein structure was a slow and labor-intensive process. Before AlphaFold, the structures of approximately 180,000 proteins had been determined over the course of several decades. After its introduction, this number increased to over 130 million in the course of a year. Understanding protein structure aids in drug discovery, vaccine development, and other biomedical advances. For this achievement, the developers of AlphaFold were awarded the Nobel Prize in Chemistry in 2024~\cite{Callaway2024ChemistryNobel}.
+
+In astronomy, the search for exoplanets--planets orbiting a star outside of our solar system--has been significantly advanced by machine-learning techniques. As astronomical datasets grow, manual identification of exoplanets becomes increasingly unfeasible. Consequently, astronomers now employ machine learning to automate complex classification tasks that traditional algorithms struggle to manage. These advances not only improve detection efficiency but also accelerate the pace of discoveries that could have profound implications for our understanding of life beyond Earth. Exoplanet research is especially compelling as it could lead to the discovery of extraterrestrial life \cite{Rajput2024ExoplanetML}.
+
+
+ML models generally fall into two categories: supervised and unsupervised learning. Supervised learning requires labeled data, where the algorithm is trained using pairs of inputs and corresponding outputs. For example, supervised techniques can be used for image recognition, where input images of cats and dogs are labeled, and the algorithm learns to classify new images of cats and dogs accordingly~\cite{JAFARIMARANDI2021165}. A well-known example of this is the multi-layer perceptron (MLP), for more information see \ref{mlp}. Unsupervised learning, in contrast, does not require labeled data. Instead, it detects patterns and structures in the data. Unsupervised techniques such as K-means and Self-Organizing Maps (SOMs) group data based on their similarities without predefined labels.
+
+
+
+\subsection{Unsupervised Machine Learning}
+
+
+Unsupervised machine learning helps analyze the statistical characteristics of a given dataset and produce outputs based on this information. They are commonly used for clustering data in cases where labeled examples are unavailable or insufficient. This covers some of the limitations previously discussed with supervised neural network techniques, but it also means that more post-processing needs to be done with unsupervised neural networks. 
+
+K-means is one of the most well-known clustering algorithms and is often used as a benchmark for comparing such algorithms. Furthermore, understanding K-means will lay the basis for understanding unsupervised neural networks \cite{1094577}. K-means is a \acrfull{vq} method. Vector quantization (VQ) was originally developed in signal processing to compress high-dimensional vectors while preserving most of the important information~\cite{MacQueen1967KMeans, Lloyd1982KMeans}. VQ techniques attempt to partition the data space with respect to a finite number of vectors, with each region represented optimally by a single model vector. The space is partitioned with Voronoi diagram $V$ such that $R^d = \cup_{i=1}^K V_i$ and $V_i \in V$ which divide the data space as follows: let $w_i$ be the weight vectors of K-means where $i =1,2,...k$. Then we define the voronoi
+cells $V_i$ as:
+
+\begin{equation}
+    V_i=\{x \in \mathbb{R}^d | \|x-w_i\| \leq \|x-w_j\| \quad j=1,2,...k \quad i\neq j \} \label{eq:voronoi_cells}
+\end{equation}
+
+This can optimally partition the space when the prototypes are optimally placed by a given method.
+This is achieved by minimizing the mean quantization error $E = \int_V D(x, m_i) \, p(x) \, dV$ where $D$ is a distance measure, $m$ is the set of vectors representing the input space, $p(x)$ is the probability density of the inputs $x$ and $dV$ is the volume differential of the data space $V$~\cite{Kohonen2013SOM}. K-means tries to generate vectors representative of the data that optimally partition the space. The ``K" in K-means stands for the number of clusters to split the N data points into. It does this by minimizing the sum 
+
+\begin{equation}
+J = \sum min_k||x_i - c_k||^2
+\end{equation}
+
+where $c_k$ are the $K$ centroids. This means K-means aims to find a set of $K$ representative vectors that minimize the total distance to the data. The algorithm alternates between assigning each point to its closest centroid and recalculating the centroids as the mean of the assigned points [Fig.~\ref{kmeans_success}]. This implies that to maximize the value of k-means clustering we need to know the number of clusters a priori. K-means has several limitations. It implicitly assumes that clusters are spherical and of similar size, as the algorithm relies solely on the position of centroids [Fig.~\ref{kmeans_fail}]. K-means is also sensitive to outliers and the initialization of the centroids, since distant points can significantly skew centroid locations. Additionally, K-means has no mechanism for preserving topological relationships between clusters. Because there is a 1-to-1 correspondence with the number of clusters and the number of vectors representing each cluster, k-means struggles with complex data distributions and hierarchical ordering.
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 16cm, height=14cm, keepaspectratio]{figs/ml_sec/kmeans-example.png}
+    \caption{Depiction of a hypothetical K-means clustering, where we have selected k=4 in a 2D space. The left figure shows the data distribution before k-means clustering, right figure shows the resulting partition of the space. We see the space gets partitioned into 4 quadrants that attempt to represent each data cluster. New data will be assigned to one of these 4 clusters with respect to the VQ prototypes (centroids) that the algorithm converged to.}
+    \label{kmeans_success}
+\end{figure*}
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 16cm, height=14cm, keepaspectratio]{figs/ml_sec/kmeans_fail.png}
+    \caption{Depiction of a data set which cannot be partitioned through k-means. To the left we show the desired partition of the space, the right figure shows the partition according to k-means for k = 2. Since k-means can only represent each cluster with a single encoding vector, it cannot handle data sets which involve topologically complex clusters.}
+    \label{kmeans_fail}
+\end{figure*}
+
+In contrast to K-means, \acrfull{som} arranges neurons in a grid that preserves the topological relationships between clusters—placing similar clusters closer together. Unlike K-means, which assigns each data point to a fixed centroid, SOMs use multiple neurons to represent clusters and make a mapping from the high-dimensional input data onto a lower-dimensional (typically 2D) grid space represented by the neurons. As a result, SOMs can capture both local and global data structures, making them particularly effective for exploratory data analysis and visualization. A more in-depth comparison between the two clustering algorithms can be seen in ref. \cite{ISODATA_CSOM_comp_urban}. Here, the authors look at spectral data from an urban area and used ISODATA, a K-means-based clustering algorithm with automatic K selection for the number of clusters. This research, which looked at detecting different materials and surfaces from multiple types of images and generated data clusters using both algorithms. The results showed that the SOM produced better classification results and more accurate clusters containing the desired data grouping.
+
+Unsupervised neural networks have played an important role in astronomy. 
+%In 2022, K-means clustering was applied to NASA datasets to identify different types of observed exoplanets~\cite{Jin_2022}. 
+SOMs have also been used to automate the classification of periodic light curves in stellar observations~\cite{Brett:2004tc}, and aided in the analysis of data from the Atacama Large Millimeter and sub-millimeter Array \cite{7849952}. Despite their success however, SOMs have been underutilized in the field of physics. In the following section, we will introduce the Self-Organizing Maps (SOMs) and discuss a variation of this, a conscious self-organizing map (CSOM).
+
+\subsection{Self-Organizing Maps}
+
+\acrfull{som} was developed by Kohonen in 1982~\cite{Kohonen88} and was inspired by the functioning of biological neurons in the brain. It is an unsupervised, competitive, and cooperative vector quantization (VQ) neural network that excels at clustering and projecting high-dimensional data onto a lower-dimensional space for visualization and analysis.
+A competitive neural network is one where neurons compete to represent input data based on a predefined similarity measure. The network is also cooperative: when a neuron ‘wins’, the SOM learning rule updates its neighbors in a pre-defined grid space as we can see on the left of Fig. \ref{som_diagram}. 
+This cooperative behavior helps preserve the topological relationships in the input space and projects it onto a lattice space ~\cite{Kohonen88, ultsch1990}, which helps construct meaningful clusters. 
+
+\begin{figure*}[htbp]
+    \centering
+     \includegraphics[width= 16cm, height=16cm, keepaspectratio]{figs/ml_sec/SOM_explination_lgrey.png}
+    \caption{Figures depicting SOM learning and structure. \textbf{Left:} shows an input vector x whose corresponding best-matching unit is the neuron $i$ with corresponding weight vector $w_i$. The weight vector   $w_i$ (black) and, its immediate neighbors (grey) are updated by the weight update formula. It also shows that $w_i$ is mapped to a region in $\mathbb{R}^n$ close to the input vector x, which shows why that neuron won. \textbf{Right:} we see what a trained SOM map might look like after similar weight vectors are identified and labeled interactively. The input space now also depicts some of the weight vectors corresponding to neurons in the SOM grid with x's, colored corresponding to the different clusters. We observe that x's of similar colors are all close together in the input space.}
+    \label{som_diagram}
+\end{figure*}
+
+To explain the Kohonen SOM, we will start by defining some notation and discussing its structure. The SOMs structure consists of a series of $Q$ neurons, indexed by $j = 1, 2, \dots, q$, in a fixed grid (typically one- or two-dimensional). In two dimensions, the grid may be square or hexagonal, though we will only use a square grid in this work. Each neuron has a corresponding $n$-dimensional weight vector $w_j(t) \in W(t)$ where $W(t)$ is the set of weight vectors corresponding to neurons at training step $t$. The neurons remain fixed throughout training, while the weight vectors associated with each neuron are updated during learning. The fixed topology of the grid space enables neighborhood-based learning, where the weights corresponding to the neurons update not only in response to inputs but also based on their proximity to the winning neuron, also known as the \acrfull{bmu}. Now, we look at the learning rule for the SOM. For a given input $x \in \mathbb{R}^{n}$ where $n$ is the dimensionality of the data, we must first compute the BMU index $c(t)$ with
+
+\begin{equation}
+c(t) = \arg\min_{j} \|x - w_j(t)\| \quad \forall j.  
+\label{eq:winning_neuron}
+\end{equation}
+
+Here, we use a Euclidean distance however, other distance measures may be used. After identifying the BMU $c(t)$, the weight vectors of the BMU and its lattice neighboring neurons (defined below) are updated according to the following equation:
+
+\begin{equation}
+w_j(t+1) = w_j(t) + \alpha(t) \cdot h_{c,j}(t) \cdot (x - w_j(t)).
+\label{eq:weight_update}
+\end{equation}
+
+
+Here $0 < \alpha(t) < 1$ is the user defined learning rate, which monotonically decreases as a function of time. This is often implemented using a monotonically decaying function or a scheduled decay. 
+
+The neighborhood function $h_{c,j}(t)$ defines the lattice neighborhood around the BMU $c(t)$ and determines which weight vectors $w_j(t)$ should be updated and the degree to which they should be updated depending on their corresponding neuron $j$. 
+The lattice neighborhood is a user defined function with a distance measure $\rho$, which measures the distance in the lattice space. Typical choices for a square lattice include a diamond neighborhood, which assigns a distance of $\rho = 1$ between neurons sharing an edge, a box function, which assigns a distance of $\rho = 1$ to neurons sharing an edge or a corner. In both of these cases, the value of $\rho$ for neurons that are further away is the sum of the minimum number of steps to reach said neuron. These types of functions work together with a user defined neighborhood radius $r$, which decays over time, to select which neurons should be updated via the function:
+
+\begin{equation}
+    h_{c,j}(t) = \begin{cases}
+        1 \quad \text{if } \rho(c,j) \leq r(t) \\
+        0 \quad \text{if } \rho(c,j) > r(t) \\
+    \end{cases}
+    \label{eq:box_function}
+\end{equation}
+
+\noindent commonly known as a rectangular function. We can also make the update less influential with radius by choosing functions like: 
+
+\begin{equation}
+    h_{c,j}(t) = \begin{cases}
+    \frac{1}{2^{\rho(c,j)}} \quad \text{if } \rho(c,j) \leq r(t) \\
+    0 \quad \text{if } \rho(c,j) > r(t) .\\
+    \end{cases}
+\end{equation}
+
+We can also use continuous neighborhood functions such as the gaussian $e^{\frac{-\rho(c,j)}{2\sigma(t)}}$. As $r(t)$ and $\sigma(t)$ serve similar purpose we will refer to both of them as the neighborhood radius.
+The neighborhood radius parameters must monotonically decrease over time either via a decay functions or with a decay schedule that reduces the parameters to a fixed value at particular times $t_1, t_2,...$. At early training stages, it is recommended to start with a large neighborhood radius, a typical choice is half the size of the grid. It is advised that the value of the neighborhood radius always remains greater than or equal to one. Values smaller than one no longer have the cooperative feature of the SOM as weight updates no longer update their neighbors. 
+
+During training, we repeat the weight updating process with randomly sampled inputs for a total number of $T$ training steps. We do not know beforehand what the value of T should be, however Kohonen recommends 500 times the number of neurons for optimal statistical learning \cite{kohonen97}. However, in recent years, datasets have become a lot larger and complex in comparison to the examples Kohonen was examining, therefore, we often need a lot more steps to produce faithful representations of the data. Newer recommendations have not been put forward.
+%In the literature, many authors use a number of training steps that is proportional to the data size such as 10 times the number of training samples. 
+Not knowing when to stop the training is a general problem of unsupervised learning techniques. Ideally, we should stop training the SOM in accordance to some stopping criterion based on quality measures, which will be discussed later. 
+
+After the training concludes we expect the weight vectors to closely match the average input mapped to their corresponding neuron. We can then find groups of similar weight vectors and interactively group them into clusters as we see in the right of Fig. \ref{som_diagram}. We can then assign labels to these clusters and use this for classification. For a given input $x'$ we can compute its BMU and classify $x'$ according to the label of its corresponding neuron derived from the cluster labels.
+This provides an interpretable summary of the data structure as the neurons are organized based on their similarities to each other.
+
+Kohonen demonstrated that it is possible to achieve a mapping from a given data to a lattice space using only the input data and their effects on the SOM network.
+The main goal of the SOM is to map a given data space onto a low-dimensional lattice in a way that preserves the topology and probability distribution of the data. This allows us to use the SOM for data classification, among other uses, as the clusters obtained may consist of high dimensional groups of data that may be obscured by other methods which reduce dimensionality.
+To achieve this, when successfully trained, the SOM maps data from the original $n$-dimensional space onto the SOM lattice space in a topology-preserving manner. Here we define topological preservation in an SOM as follows: let $M$ be the be the data manifold $M \subseteq \mathbb{R}^n$ and $A \subseteq \mathbb{R}^{n_A}$ be the SOMs' $n_A$-dimensional lattice which is typically 2D.  We call the map $\mathcal{M}_A = (\Psi_{A \rightarrow M}, \Psi_{M \rightarrow A})$ topologically preserving if the mappings $\Psi_{A \rightarrow M}$ and $\Psi_{M \rightarrow A}$ are both neighborhood preserving. The mapping $\Psi_{M \rightarrow A}$ is neighborhood preserving if the weight vectors $w_i$ and $w_j$ which are neighbors on $M$ belong to the vertices $i, j$ which are neighbors in $A$. The inverse mapping $\Psi_{A \rightarrow M}$ is defined as neighborhood preserving if the adjacent vertices $i, j$ in $A$ are mapped onto locations $w_i, w_j$ which are neighbors on
+$M$ \cite{topology_preservation}.
+
+Now we are ready to define the neighborhoods in both of these spaces. We say that two weights $w_i, w_j$ are neighbors in $M$ if and only if their corresponding voronoi cells (Eq.\ref{eq:voronoi_cells}) satisfy the conditions $V_i \cap V_j \neq \emptyset$. We then define two neurons $i,j$ as being neighbors in the lattice space if and only if,  under some chosen lattice distance measure $\rho$, the equation $\rho (i,j) = 1$ is satisfied \cite{topology_preservation}.  
+Ideally, this topological preservation is bidirectional. However, this is not always possible, especially when projecting $n > 2$ dimensions into a two-dimensional grid. 
+
+Perfectly clean topology preservation is typically not possible due to noise, and dimensional mismatch but it is important to understand the extent of these violations and if they are harmful for our ability to detect clusters. There are tools that can do this and quantify these violations such as the topographic product \cite{topographic_product}, the topographic function \cite{topographic_function}, and the weighted differential topographic function \cite{weighted_topo_function}.
+In NeuroScope we routinely make use of these to quantify the quality of the mapping but for the sake of space we will not elaborate on these methods here.
+
+
+\begin{comment}
+At its core, the self-organizing map relies on 4 main components: 
+
+\begin{enumerate}
+    \item An array of processing units (neurons) capable of receiving inputs and distinguishing between them.
+    \item A system that takes these neurons and selects which one is the best discriminant of the data.
+    \item A local interaction mechanism that affects the selected neuron as well as its neighbors.
+    \item A learning rule that updates the weights of the best-matching neuron to improve its representation of the input.
+\end{enumerate}
+\end{comment}
+
+
+%This can take many different forms depending on weather we use a hexagonal or square grid. If we take the square grid as an example if we define the distance between neurons to be a box metric which results in at most 8 neighbors per cell or a diamond metric which results in at most 4 neighbors per cell.
+
+
+
+\subsubsection{SOM Example: Four Gaussian Clusters in 2D}
+
+To illustrate the behavior of SOMs, we consider a simple example in 2D, this allows us to visualize how the weights change over time, which is not possible to do for data sets with more than 3 dimensions \footnote{This example was taken from a homework problem in COMP/ELEC/STAT 502 at Rice University taught by Professor Erzsébet Merényi}. We generated 8000 data points sampled from Gaussian distributions centered at four locations, (1,1), (1,2), (2,1) and (2,2). The data are normalized to the [0, 1] range using a min-max scaling affine transformation. This is not needed for the SOM but we scale it anyways since its good practice for machine learning in general.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{c|c|c}
+         Decay Time &  $\alpha$ & $r$ \\ \hline
+         2000 &  0.5 &  5 \\
+         8000 & 0.2 & 3 \\
+         30,000 & 0.05 & 1 \\
+
+    \end{tabular}
+    \caption{Decay schedule for the Kohonen SOM trained with four gaussian clusters in 2D space.}
+    \label{tab:2d_gauss_4class_parm}
+\end{table}
+
+We initialize the SOM with 49 neurons arranged in a $7 \times 7$ grid. The initial weight vectors are assigned random values uniformly sampled from the normalized data space $[0, 1]^2$ to match the scaled input range. We set the total number of training steps to 30,000. The learning parameters for $\alpha(t)$ and $r(t)$, along with the decay schedule can be seen in Table. \ref{tab:2d_gauss_4class_parm}.Initially, the weights are randomly distributed, but they quickly organize into a rough structure reflecting the data distribution—forming a square mesh. In this example, we can see the ordering phase as early as $t = 2,000$ as shown in in Fig. ~\ref{4class_2d_som_evolution}, this is before the SOM has had a chance to train with all the data. Then comes the longer part of the training, the convergence stage, which takes up most of the training. Some neurons located between clusters become ‘dead’ units—neurons that do not win any inputs. If present, these can be useful for identifying cluster boundaries, as they mark low-density regions in the input space.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[origin=c, width=8cm]{figs/ml_sec/SOM_weights_and_data_t0.png}
+    \includegraphics[origin=c, width=8cm]{figs/ml_sec/SOM_weights_and_data_t1000.png}
+    \includegraphics[origin=c, width=8cm]{figs/ml_sec/SOM_weights_and_data_t3000.png}
+    \includegraphics[origin=c, width=8cm]{figs/ml_sec/SOM_weights_and_data_t10000.png}
+    \includegraphics[origin=c, width=8cm]{figs/ml_sec/SOM_weights_and_data_t20000.png}
+    \includegraphics[origin=c, width=8cm]{figs/ml_sec/SOM_weights_and_data_t30000.png}
+    \caption{Evolution of the SOM weight vectors over the course of training with the 4 Gaussian clusters 2D example at times $t=0, 1000, 3000, 10000, 20000 \text{ and } 30000$ from top left to bottom right. Here the weight vectors are shown in the dataspace to aid in visualizing how the SOM evolved over time. Adjacent neurons in the grid space are connected by lines. Neurons that have no data mapped to them during recall are considered `dead' and are marked with a red x. We see that early in the training, the weights are pointing to random directions with no relation, as soon as step 2000, the SOM has self-organized in the data space. The rest of the steps, up to 4 million were all in the fine-tuning stage.}
+    \label{4class_2d_som_evolution}
+\end{figure}
+
+In this case, visualization in the data space was possible because the data were two-dimensional. However, in most real-world applications, the data is high-dimensional, making such visualization infeasible. To address this, several visualization techniques have been developed to interpret SOM's knowledge from the lattice. Such tools are essential for gaining insight into the structure of high-dimensional data and the quality of the SOM’s organization. These techniques will be discussed in detail in the following sections.
+
+\subsection{Conscience Self-Organizing Maps}
+
+
+The conscience \acrfull{csom} \cite{DeSieno88} is a variant of the Kohonen SOM with faster convergence. Additionally, it yields a more accurate representation of the data space which closely matches its underlying probability density function $p(x)$. 
+In fields such as pattern recognition, statistical analysis, and control, it is often necessary to model $p(x)$ using non-parametric methods. 
+To get an accurate model of $p(x)$, each neuron should have an equal probability of winning the competition in the SOM training.
+The \acrfull{csom} achieves this by introducing a bias term, which also removes the need for a large initial neighborhood radius; instead, the radius can be fixed at 1 throughout training. This mechanism also yields quicker convergence than the Kohonen SOM. In the Kohonen SOM, neurons in dense regions of the input space may win disproportionately often, causing neurons in sparser regions to adapt more slowly, increasing convergence time. As a result, low-density regions may be poorly represented~\cite{DeSieno88}.
+
+The \acrshort{csom} has the same weight update rule (Eq. \ref{eq:weight_update}) as the Kohonen SOM only this time $h_{c,j}(t)$ is the box function (Eq. \ref{eq:box_function}) with fixed $r(t) = 1 \text{ }\forall t$. The change introduced in the \acrshort{csom} comes from the winner selection. DeSieno introduces a bias term $T_j$, which adjusts the neuron’s likelihood of winning based on its past activation. This term is defined using the parameter $\gamma$ and scales with the number of neurons in the network to ensure balanced competition. This bias term will be incorporated into the winner selection step, favoring neurons that have won less frequently.
+
+\begin{equation}
+c(t) = 
+\arg\min_{j}( \|w_j(t) - x_i\|^2 - T_j(t)) 
+\end{equation}
+where,
+\begin{equation}   
+T_j(t) = \gamma(t) \left( \frac{1}{Q} - p_j(t) \right), \quad 0 < \gamma(t) < 1.
+\end{equation}
+
+The bias $T_j$ discourages a small number of neurons in high density regions from winning too frequently and encourages a more
+even distribution of winning neurons, leading to a better representation of low density regions. This is done with the parameter $p(t)$ which is the relative frequency of each neuron becoming the BMU. We can calculate the individual values for each neuron $p_j(t)$ with 
+
+\begin{equation}
+p_j(t+1) = p_j(t) + \beta(t) \left( c(t) - p_j(t) \right), \quad 0 < \beta(t) \ll 1
+\end{equation}
+
+\noindent where $c(t)$ is 1 for the winning neuron and 0 otherwise, $\beta(t)$ is a user-defined parameter that controls how strongly the recent win contributes to the bias term. 
+
+%As with the $\alpha(t)$ and $\gamma(t)$ this parameter should also monotonically decrease over time.
+
+Three user-defined parameters govern the training process: the learning rate $\alpha(t)$, the win-tracking rate $\beta(t)$, and the bias scaling factor $\gamma(t)$. Each of these parameters must monotonically decrease over time as training progresses. Combined with the total number of training steps, these constitute all the parameters that control a \acrshort{csom}. In this work, we consistently use a step function to decay the parameters according to a user-defined schedule. 
+
+In all subsequent analyses, we use the \acrshort{csom} due to its faster convergence and more accurate representation of the data’s underlying density distribution. Most of the \acrshort{csom} computations were performed using NeuroScope, an environment with software modules for SOM learning and related capabilities that examine the correctness of learning, topological preservation, and numerous ways of finding clusters in the data. This environment was developed by Erzsébet Merényi and her group. This software has been used extensively in prior SOM research~\cite{merenyi2002, MERENYI1996280}, and has demonstrated consistently accurate and reliable results. 
+
+To ensure future usability within the XENONnT collaboration, I also developed a Python-based SOM implementation \textsc{sciSOM}. This provides a maintainable, open-source alternative for future training tasks, although it has much more limited capabilities compared to NeuroScope. It includes modules for training the Kohonen SOM and CSOM, plotting functions such as the mU-matrix representation of data, discussed later in this work, and other visualization modules.  It also includes a remap function heavily inspired by a similar function in NeuroScope which allows users to draw boundaries directly on images resulting from SOM visualization modules such as the mU-matrix.
+
+As mentioned, one of the weaknesses of unsupervised learning is that it is not clear when the network has converged and thus when to stop the learning. This can result in SOM weight cubes that have not yet fully converged, or in a lot of wasted time by the user for training the SOM for much longer than what is needed.
+
+The following paper, presented at ESANN 2024, demonstrates our development of a novel
+stopping criterion for SOM training—addressing a critical challenge in unsupervised learning. This work shows how we achieved 99.9\% classification accuracy for difficult-to-distinguish signals
+while developing the Sample Migration (SaMi) criterion that reduces training time by 50\%. This contribution can help save a lot of time in future SOM training, reducing the human resource strain of the collaboration.
+
+
+\begin{comment}
+Each weight vector is denoted as $w_j^{(a_p, b_q)} \in \mathbb{R}^n$, where $j = 1, 2, \dots, M$ indexes the neurons and $(a_p, b_q)$ indicates the corresponding location on the 2D SOM grid. For brevity, the grid coordinates $(a_p, b_q)$ will be omitted from the weight notation when not explicitly required. Before training, the weight vectors $w_j$ are initialized to random positions in the $n$-dimensional feature space. To train an SOM, input vectors from the training set $x_{i} \in \mathbb{R}^{n}$ are randomly selected. As before, a winning neuron is determined by identifying the neuron with the closest distance to the $i^{th}$ input vector, typically using the Euclidean distance. The binary variable $c_j(t)$ acts as an indicator function that activates only for the winning neuron at time step $t$. This can be achieved using the following formula:
+
+\begin{equation}
+c_j(t) = 
+\begin{cases}
+1 & \text{if } \arg\min_j \|w_j(t) - x_i\|^2 \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+Here is where the distinguishing characteristic of the CSOM comes into play. The term ‘conscience’ refers to the introduction of bias terms in the winner selection process, which discourages a small number of neurons from winning too frequently and encourages a more even distribution of winning neurons. This mechanism penalizes neurons that win too frequently, thereby encouraging a more even distribution of activations across the map. To implement this bias, the relative frequency with which each neuron has won is tracked over time using the following expression:
+
+\begin{equation}
+p_j(t+1) = p_j(t) + \beta \left( c_j(t) - p_j(t) \right), \quad 0 < \beta \ll 1
+\end{equation}
+
+\noindent where $\beta$ is a user-defined parameter that controls how strongly the recent win contributes to the bias term. Let $y_j$ denote the index of the winning neuron at time step $t$, which will be used for updating the weights. deSeino introduces a bias $T_j$, which adjusts the neuron’s likelihood of winning based on its past activation. This term is defined using the parameter $\gamma$ and scales with the number of neurons in the network to ensure balanced competition. This bias term will be incorporated into the winner selection step, favoring neurons that have won less frequently.
+
+\[
+y_j(t) = 
+\begin{cases} 
+1 & \text{if } \|w_j(t) - x_i\|^2 - T_j(t) < \|w_k(t) - x_i\|^2 - T_k(t),\quad \forall k \ne j \\
+0 & \text{otherwise}
+\end{cases}
+\]
+where,
+\begin{equation}   
+T_j(t) = \gamma \left( \frac{1}{M} - p_j(t) \right), \quad 0 < \gamma < 1
+\end{equation}
+This function determines which neurons are within the update neighborhood of the BMU, as captured by the indicator $z_j(a_p, b_q)$, defined as follows:
+\[
+z_j(a_p, b_q) = 
+\begin{cases}
+1 & \text{if } |a_p - a_r| \le 1 \text{ and } |b_q - b_s| \le 1 \text{ for some } (a_r, b_s) \in \mathcal{N}(j) \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+Finally, just as with the kSOM $\alpha$, where $0 < \alpha < 1$, is the learning rate. This leads to the following weight update equation:
+\[
+w_j(t+1) = w_j(t) + \alpha(t) \cdot z_j(y_j(t)) \cdot (x_i - w_j(t))
+\]
+\end{comment}
+
+\includepdf[pages=-, pagecommand={\label{som_paper}}]{SOM_paper/ESANN_paper_corrections_final.pdf}

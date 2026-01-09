@@ -1,0 +1,76 @@
+%\section{Evidence for Dark Matter}
+
+\subsection*{History of \gls{dm}}
+
+%The concept of dark matter (DM) came long before we had observational evidence or even a proper theoretical model for its existence. According to Bertone \textit{et al.} \cite{Bertone:2016nfn} some of the earliest mentions of DM appear in studies of the Milky Way. Astronomers argued that if DM existed in the Milky Way, it could not be very abundant. The motions of stars appeared consistent with the luminous matter observed, primarily the stellar population \cite{opik2022, 1932BAN}. These early studies show that the concept of unseen matter was considered, but initially dismissed because stellar dynamics matched visible matter.
+
+This chapter provides essential physics background for machine learning researchers unfamiliar with dark matter detection.
+The first compelling evidence for dark matter came from Fritz Zwicky’s study of the redshifts of galaxies in clusters. In 1933, studying the Coma cluster, he noticed a wide scatter in the velocities of eight galaxies. Using the virial theorem, which in this context can be expressed as $2<T> = -<U>$ where $T$ is the kinetic energy and $U$ is the potential energy, he estimated that the cluster’s velocity dispersion should be about 80\,km/s. However, the observed value was closer to 1,000\,km/s \cite{zwicky_1933}. These results provided the first strong hint of unseen mass in clusters, resulting in a stronger gravitational potential than expected. %However, this is sometimes mistakenly cited as the very first mention of dark matter \cite{Bertone:2016nfn}. 
+While Zwicky’s findings were striking, they were not widely accepted at the time, and alternative explanations were considered in the decades that followed.
+
+
+Many astronomers proposed alternative explanations for the large discrepancies between the observed and expected velocity dispersions in galaxy clusters. Some argued that the galaxies studied were not true members of the cluster \cite{1940ApJ}. Others suggested that unseen components, such as free hydrogen or ionized gases, contributed additional mass not visible in optical light \cite{1961AJ_gasDM, 1967ApJ_iongasDM}. These explanations reflect the community's reluctance to invoke an entirely new form of matter, favoring other alternatives instead.
+
+
+Galaxy clusters, however, were not the only indication that something was amiss with our understanding of cosmology at the time. The ``flat" rotation curves of some galaxies also seem to suggest the existence of dark matter. In 1939, Horace Babcock observed the circular velocity of stars around galaxies at 20\,kpc and found velocities much higher than could be explained by the visible mass distribution at the time \cite{1939LicOB}.  This implied that there was a substantial ``extra" mass that could not be observed. These results were further supported in 1959, when scientists calculated the combined mass of Andromeda and the Milky Way, which resulted in a value six times larger than the accepted value at the time for their reduced mass \cite{1959ApJ_intergalMatter}. Despite these early findings, the case for dark matter from galactic rotation curves did not gain widespread acceptance until the 1970s, when Rubin and Ford produced higher-quality observations confirming these anomalies \cite{1970ApJ_M31Rot}.
+
+Rubin and Ford released higher-quality observations that confirmed earlier reports of discrepancies between measured velocities and those predicted from luminous matter. In the same year, research was released that showed that other galaxies presented a similar phenomenon where the rotation curves remained high and failed to decline at large radii, contrary to predictions \cite{1970ApJ_spiral}. Later studies compared the rotation curves of M31 (Andromeda), M81, and M101 with that of the Milky Way (Fig. \ref{fig:rot_curve}). These studies showed that both M31 and M101 exhibit a flattening of their rotation curves \cite{1973_rot_diff_galaxy}. This was a crucial shift: dark matter was no longer just an anomaly in clusters but appeared to be a pervasive component of galaxies themselves, shaping their dynamics on a large scale.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{figs/intro_figs/robertsrots1973.pdf}
+    \caption{Rotation curves of the galaxies M31, M101, and M81. The rotation curve of the Milky Way was also included as a dashed line \cite{1973_rot_diff_galaxy}}.
+    \label{fig:rot_curve}
+\end{figure}
+
+These findings challenged the prevailing view that luminous matter dominated galaxies and clusters. The accumulating evidence for dark matter revolutionized our understanding of galaxy formation and cosmic structure. While the early indications of dark matter were compelling, to fully appreciate two of the strongest lines of evidence for dark matter, gravitational lensing and the CMB, we must first recall some basics of General Relativity. 
+
+
+\subsection*{General Relativity and Dark Matter}
+
+In the late 19th and early 20th centuries, there was a conflict between two of our most successful theories of physics. Newtonian physics stated that forces acted instantaneously, and Maxwell’s theory of electromagnetism established a finite speed limit for the propagation of interactions. This apparent conflict between instantaneous action at a distance in Newtonian gravity and the finite speed of interactions in electromagnetism created a tension that called for a new framework. 
+
+To bridge these conflicts, Einstein developed the theories of special and general relativity. A central difference between Newtonian mechanics and relativity lies in their treatment of gravity. In Newtonian physics, gravity is defined as 
+
+$$ F = \frac{Gm_1m_2}{r^2} ,$$
+
+\noindent % CT I added this
+which implies that gravitational interactions require two objects with mass. Since light was understood to be massless, Newtonian gravity predicted no deflection of light. 
+ 
+Einstein, however, recast gravity not as a force but as the curvature of space-time produced by mass and energy. In this view, even massless particles like photons should follow curved paths in a gravitational field. Therefore, finding such a phenomenon would provide strong evidence for General Relativity. In 1919, Arthur Eddington and colleagues observed a solar eclipse and confirmed that starlight passing near the Sun was deflected by the predicted amount. This landmark result established General Relativity as the correct description of gravity.
+
+%Special relativity was already accepted at the time of this argument, so some scientists would try to ``rescue" Newton's prediction and give light an effective mass based on its energy $m= {E}/{c^2}$.
+
+A key consequence of Einstein’s prediction of light deflection is gravitational lensing, the bending of light by massive objects. This allows us to measure mass distributions independent of light emission. Because lensing depends only on the total mass (regardless of whether it emits light), it provides a direct probe of otherwise invisible matter. Gravitational lensing was later used to find regions with little visible (baryonic) matter but significant gravitational lensing signatures, providing evidence for dark matter. 
+
+
+\subsection*{Evidence for Dark Matter}
+
+In 1937, Zwicky published a refined analysis of the Coma cluster. He applied the virial theorem to the Coma cluster, estimating that it contained about 1,000 galaxies, which implied a velocity dispersion of 700\,km/s. He obtained a mass-per-galaxy of $4.5 \times 10^{10}$\,$M_\odot$ and an average absolute luminosity of $8.5 \times 10^7$\,$L_\odot$, leading to a mass-to-light ratio of $\approx$500. Although his estimate relied on an incorrect value of the Hubble constant and required later correction, the revised results still yielded a very large mass-to-light ratio, implying the presence of unseen mass. This represented the first quantitative demonstration that visible light does not trace all the mass in a system. However, for several decades the result was treated cautiously, as alternative explanations were still debated. Only in the 1970s, with new X-ray observations and improved galaxy surveys, did the evidence for hidden mass become much more compelling.
+
+In the 1970s, scientists observed X-ray emissions from the center of galaxy clusters. These X-ray emission were not correlated with galaxy density but was concentrated near the cluster centers. Astronomers concluded it originated from a hot, diffuse intracluster medium (ICM) rather than the galaxies themselves.  This led to the conclusion that galaxy clusters have a hot intergalactic medium that was generating these X-rays through thermal processes from observations of the Coma clusters \cite{soft_x_ray, strong_x_ray_coma} as well as other galaxy clusters \cite{osti_4002596}. This discovery was crucial because it revealed that a large fraction of cluster mass resides in the hot intracluster medium, which later became key to interpreting one of the most striking demonstrations of dark matter: the Bullet Cluster.
+
+In 2006, the landmark article ``A Direct Empirical Proof of the Existence of Dark Matter" was published. In it, astronomers analyzed the Bullet Cluster, showing, for the first time, a spatial separation between baryonic matter (from X-ray observations of the plasma) and the gravitational potential (from lensing).
+The Bullet Cluster resulted from the collision of two galaxy clusters. These galaxy clusters are primarily composed of a collection of galaxies ($\approx 1-2\%$ of their mass), the ICM in the form of plasma ($\approx 5-15\%$ of their mass), and dark matter, which makes up the remainder \cite{Clowe:2006eq}. When two galaxy clusters collide, these components interact differently with their counterpart in the other galaxy clusters. During a collision, galaxies pass through largely unaffected because they are sparse and rarely interact, while the intracluster plasma behaves like a fluid, colliding and generating X-rays.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/intro_figs/bullet.png}
+    \caption{The Bullet Cluster showing the intergalactic medium X-ray emission in color, from blue to white and the gravitational contours shown in green. A white line of 200\,kpc is included for scale. Image source \cite{Clowe:2006eq}.}
+    \label{fig:bullet_cluster}
+\end{figure}
+
+If we worked with the null hypothesis of no dark matter, then we would expect the gravitational contours to be centered around the hot ICM, since this contains most of the baryonic mass. However, when we look at the Bullet Cluster in Fig. \ref{fig:bullet_cluster} we see that the contours do not align.
+The gravitational contours shown in green are distinctly separated from the intergalactic medium. This demonstrates that luminous baryonic matter cannot account for most of the system’s mass, providing strong evidence that dark matter exists and dominates the cluster. These observations also ruled out some competing explanations, such as modified gravity models that scale with baryonic matter, since the gravitational lensing signal is spatially separated from the baryonic plasma. This makes the Bullet Cluster one of the clearest empirical demonstrations of dark matter, complementing earlier evidence from galaxy clusters and rotation curves.
+
+\subsection*{Thesis Summary}
+
+In this work, we will first discuss the theory of DM and one of its most promising candidates, the WIMP. We will look at detector technology designed to detect these particles, focusing on the XENONnT experiment, its hardware, and software processing. We need this in order to understand the kinds of signals we wish to detect and how we can improve our chances of detecting DM by improving the signal classification.
+
+To do this, we will briefly discuss machine learning, in particular, we will look at self-organizing maps, a kind of unsupervised neural network. We trained this network with detector data and managed to improve both the signal classification and data characterization by focusing on the clusters extracted from the resulting weight cube. We will also discuss the corresponding check we did to confirm these improvements and propose that this method be used in future experiments.
+
+We also examine XAMS, a small-scale dark matter experiment designed to test the TPC technology on which experiments such as XENONnT are based. This section shows the power of our method to characterize detector signals and flag abnormal data for analysis.
+
+
+
+\newpage
