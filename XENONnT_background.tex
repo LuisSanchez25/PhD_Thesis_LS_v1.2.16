@@ -42,13 +42,13 @@ Light is detected by two arrays of 3-inch Hamamatsu R11410-21 PMTs: 241 PMTs at 
 
 Electrodes are used to generate electric fields within the \gls{tpc}, which are necessary to extract electrons released during particle interactions in the liquid xenon. This enables us to measure the energy deposited into the ionization process. The electric field is shaped and maintained by five parallel grid electrodes and two concentric cages of field-shaping rings. The parallel grid electrodes are configured as follows (from bottom to top):
 \begin{itemize}
-    \item A screening mesh located $\SI{5.3}{mm}$ above the bottom PMT array.
+    \item A screening mesh located $\SI{5.3}{mm}$ above the bottom \gls{pmt} array.
     \item A cathode located $\SI{60}{mm}$ above the first screening mesh.
     \item A gate electrode $\SI{5.02}{mm}$ below the liquid level/$\SI{1.486}{m}$ above the cathode.
     \item The anode $\SI{8}{mm}$ above the gate.
-    \item A second screening electrode $\SI{40.7}{mm}$ below the top PMT array.
+    \item A second screening electrode $\SI{40.7}{mm}$ below the top \gls{pmt} array.
 \end{itemize}
-To mitigate electrode sagging due to electric field stress and gravity, two perpendicular support wires were added to the gate and four to the anode. A uniform drift field of approximately $\SI{20}{V/cm}$ is established between the cathode and gate, directing ionization electrons upward toward the liquid-gas interface. There, an extraction field between 2.9–$\SI{3.7}{kV/cm}$, applied between the gate and anode, pulls electrons into the gas phase~\cite{XENON:2024wpa}. The field shaping electrodes maintain a uniform electric field within the TPC, which maximizes the active volume.
+To mitigate electrode sagging due to electric field stress and gravity, two perpendicular support wires were added to the gate and four to the anode. A uniform drift field of approximately $\SI{20}{V/cm}$ is established between the cathode and gate, directing ionization electrons upward toward the liquid-gas interface. There, an extraction field between 2.9–$\SI{3.7}{kV/cm}$, applied between the gate and anode, pulls electrons into the gas phase~\cite{XENON:2024wpa}. The field shaping electrodes maintain a uniform electric field within the \gls{tpc}, which maximizes the active volume.
 
 \Glspl{pmt} are the photon-sensitive components of the detector, responsible for converting scintillation light into measurable electrical signals. 
 %Discribe how PMTs work -> data read out to DAQ -> data processing
@@ -72,7 +72,7 @@ A natural question in the context of dark matter detection is: why choose xenon 
     \item \textbf{Stable atomic nucleus}: While heavier noble gases like radon exist, they are radioactive. Xenon offers a balance of high atomic mass and isotopic stability, making it ideal for low-background experiments.
     \item \textbf{Xenon is well-suited for scintillation-based detection}: Xenon has a high photon yield, and it is transparent to its own emissions, ensuring that the full energy of the interaction can be captured by the PMTs. This occurs because excited xenon atoms form short-lived dimers (excimers), which de-excite by emitting vacuum ultraviolet (VUV) photons. Since xenon is transparent to its own scintillation light, the emitted photons can travel significant distances without being reabsorbed.
     \item \textbf{Xenon is self-shielding}: Due to its high density, xenon is effective at attenuating external radiation. This self-shielding property enables background reduction by selecting a fiducial volume away from the detector boundaries.
-    \item \textbf{Xenon has a low electron affinity}: due to its properties as a noble gas, making it easy for electrons to travel within the TPC and reducing the chances of the electron being absorbed.
+    \item \textbf{Xenon has a low electron affinity}: due to its properties as a noble gas, making it easy for electrons to travel within the \gls{tpc} and reducing the chances of the electron being absorbed.
 \end{itemize}
 
 There are other direct detection experiments that use different atoms such as argon, to conduct the dark matter search. Argon offers superior discrimination between nuclear and \acrfull{er} via \acrfull{psd}, which exploits differences in scintillation time profiles between the two interaction types. It is crucial to distinguish nuclear recoils from electronic recoils as \glspl{wimp} are expected to interact primarily via coherent scattering off atomic nuclei, whereas most background events produce \glspl{er} \cite{Lippincott2008}. 
@@ -95,7 +95,7 @@ Here, $Xe^*$ and $Xe^{**}$ denote two excited states of xenon with are two excit
 
 $$Xe_2^* \rightarrow Xe + Xe + \gamma$$
 
-This mechanism underlies the primary scintillation (S1) signal observed in xenon detectors. Two distinct scintillation signals are produced in a dual-phase xenon TPC:
+This mechanism underlies the primary scintillation (S1) signal observed in xenon detectors. Two distinct scintillation signals are produced in a dual-phase xenon \gls{tpc}:
 \begin{itemize}
     \item the prompt scintillation signal (S1), generated immediately at the interaction site, and
     \item the delayed electroluminescence signal (S2), produced when ionization electrons are extracted into the gas phase and accelerated, causing secondary photon emission.
@@ -212,13 +212,13 @@ We will expand on the software infrastructure in a later chapter.
 
 \subsection{Data corrections}
 
-To accurately reconstruct particle interactions in the detector, we apply corrections at multiple stages throughout the data processing pipeline. These include corrections for converting PMT voltage traces to photoelectrons (during record formation) and accounting for the electron drift velocity to reconstruct the interaction depth. We use xedocs to manage the metadata associated with each correction, while enforcing rules and constraints to preserve data integrity during schema updates.
+To accurately reconstruct particle interactions in the detector, we apply corrections at multiple stages throughout the data processing pipeline. These include corrections for converting \gls{pmt} voltage traces to photoelectrons (during record formation) and accounting for the electron drift velocity to reconstruct the interaction depth. We use xedocs to manage the metadata associated with each correction, while enforcing rules and constraints to preserve data integrity during schema updates.
 Some of these corrections or schemas, as we will call them henceforth, need different rules.
 
 
 One key correction is the electron lifetime correction. As electrons drift through the liquid xenon, some are absorbed by electronegative impurities, reducing the number that reach the gas phase and contribute to the S2 signal. The electron lifetime characterizes this absorption and is used to correct the S2 area by extrapolating it to what would have been observed with infinite purity. Since electron lifetime changes over time, it must be carefully tracked and applied per-run. This is one of many time- and position-dependent corrections, making robust metadata handling essential—precisely the role of xedocs.
 
-The metadata corrections tend to vary the most between different \acrfull{sr}. Science runs are designated time periods in which we collect data with the aim of publishing a result, usually to release our WIMP analysis. As of writing, XENONnT has had 3 science runs: SR0, SR1, and SR2. SR0 occurred shortly after the end of the commissioning phase of our detector and was used for our first set of results. After we were done with the analysis for SR0, we decided to make significant changes to the configuration of the detector for SR1. Major changes in the detector usually occur between science runs. For our purposes, we will only focus on the changes between science runs that affect low-level data. Between SR0 and SR1, there were significant changes to the way we adjust the PMT gains, affecting the characteristics of the waveforms generated. For our purposes, there is no difference between SR1 and SR2.
+The metadata corrections tend to vary the most between different \acrfull{sr}. Science runs are designated time periods in which we collect data with the aim of publishing a result, usually to release our WIMP analysis. As of writing, XENONnT has had 3 science runs: SR0, SR1, and SR2. SR0 occurred shortly after the end of the commissioning phase of our detector and was used for our first set of results. After we were done with the analysis for SR0, we decided to make significant changes to the configuration of the detector for SR1. Major changes in the detector usually occur between science runs. For our purposes, we will only focus on the changes between science runs that affect low-level data. Between SR0 and SR1, there were significant changes to the way we adjust the \gls{pmt} gains, affecting the characteristics of the waveforms generated. For our purposes, there is no difference between SR1 and SR2.
 
 
 \subsection{Achievements of the XENONnT Experiment}
@@ -245,7 +245,7 @@ In November 2024, the XENON collaboration published a paper detailing the first 
 
 \subsection{Scope}
 
-In this document, we primarily focus on two dark matter detectors. These are the XENONnT detector, designed to detect dark matter and other rare interactions, and the XAMS experiment, which aims to test emerging TPC technologies.
+In this document, we primarily focus on two dark matter detectors. These are the XENONnT detector, designed to detect dark matter and other rare interactions, and the XAMS experiment, which aims to test emerging \gls{tpc} technologies.
 
 Both experiments operate under the same physical principles and share a similar software architecture for data analysis. The differences between the two will be discussed when needed but we focus primarily on XENONnT, as the Nikhef-based XAMS detector serves as a simplified test platform for its technologies. This section emphasizes XENONnT, with a more detailed discussion of XAMS provided in later chapters.
 
