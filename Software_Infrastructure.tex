@@ -27,7 +27,7 @@ Changes to the data processing pipeline are implemented by creating new Python c
 
 In the following sections, we first introduce the XENONnT data flow pipelines. We then describe the core software tools, data processing schemes, and metadata management strategies. Finally, we discuss our data storage infrastructure and propose improvements for future scalability.
 
-\subsection{Data flow pipeline}
+\subsection{Data Flow Pipeline}
 
 %\subsubsection{DAQ and Raw Data Collection at LNGS}
 
@@ -90,7 +90,7 @@ Our main software infrastructure focuses on the Python packages Strax, Straxen, 
 
 Strax is an analysis framework designed for processing pulse-only digitized photomultiplier tube (PMT) data, specialized for live data processing at speeds of 50-100\,MB(raw)/core/sec \cite{strax_main}. As the experiment expanded and the rate of data increased, the previous processor pax \cite{pax_xenon1t} became insufficient to meet these needs. As a result, Strax was developed as a general framework for this kind of analysis. To achieve the required performance improvements, Strax leverages NumPy structured arrays and Numba for just-in-time (JIT) compilation, which together achieve a performance improvement of 100x compared to interpreted Python \cite{strax_main}. 
 
-\subsection*{Performance optimizations (numpy/numba)}
+\subsection*{Performance Optimizations (Numpy/Numba)}
 \label{sec:optimization}
 
 NumPy is a Python package for scientific computing. It enables vectorized operations, which replace explicit Python loops with efficient array-level computations implemented in optimized C code. This enables quick and efficient array computations and matrix operations. NumPy supports multidimensional arrays and derived objects such as masked arrays, which allow for conditional computations and other routines for quick operations on these objects. Furthermore, NumPy arrays are stored in contiguous blocks of memory, which allows for efficient indexing and better CPU cache performance \cite{numpy_docs}. In practice, this means we can perform operations over waveforms, which are 200-element arrays, and compute derived quantities for a set of interactions with better efficiency than using loops. Given the scale of data processed in XENONnT, optimizing performance with NumPy is essential to keep analysis pipelines efficient and scalable.
@@ -107,7 +107,7 @@ While NumPy optimizes array operations, Numba addresses Python's computational l
 
 In Strax, we use Numba to accelerate computationally intensive tasks such as baseline computation in raw\_records and efficient chunking of waveform data for storage. These optimizations are critical for maintaining real-time processing capabilities given the volume of data produced by XENONnT.
 
-\subsection*{Parallelism and memory layout}
+\subsection*{Parallelism and Memory Layout}
 
 Memory access latency and bandwidth limitations are often major bottlenecks in data-heavy pipelines \cite{memory_wall1995}; as such, this aspect was also addressed when transitioning from PAX to Strax. In Strax, we transitioned from object-oriented data structures (such as dictionaries and custom classes) to an array-oriented programming model. This allows us to saturate the memory bus to the CPU cache, drastically reducing the time spent in moving memory, thus making data analysis much quicker. Using structured arrays enables faster data access and caching, typically one of the slowest aspects of high-energy physics analysis \cite{Pivarski_2018}. By taking advantage of numpy structured arrays, the data does not need to be constantly copied, and instead we can use views and references. This minimizes memory movement, and takes advantage of SIMD vectorization, and allows the CPU caches and prefetchers to be fully utilized, leading to saturation of the memory bandwidth.  Furthermore, having objects for each interaction presents a problem for data analysis, as fetching data from objects requires nested functions/protocols. We can see an example of the difference in computation speed by looking at the computation rate for CMSSW [tab \ref{tab:HEP_query_systems}] where we can see that analyzing the full framework of an event is 6 orders of magnitude slower than direct operation on arrays. This can be likened to optimizing a shuttle service: maximizing the number of passengers per trip and avoiding redundant back-and-forth trips reduces overall travel time. 
 
@@ -136,7 +136,7 @@ To quantify these improvements, PAX achieved processing speeds of $\mathcal{O} (
 \end{figure}
 \end{comment}
 
-\subsubsection*{Plugin based design}
+\subsubsection*{Plugin Based Design}
 
 One of the key architectural choices behind Strax is its plugin-based design, which contributes significantly to its scalability. This decision was motivated in part by historical factors: many collaborators in the XENON experiment were already familiar with this modular structure. Moreover, the plugin model aligns well with the collaborative nature of the experiment, enabling individual developers to work independently on specific components without requiring extensive coordination. This mirrors Conway’s Law, which states: “Any organization that designs a system will produce a design whose structure is a copy of the organization’s communication structure” \cite{conway_committees, conway_law}. In XENON, communication often takes place within smaller subgroups, each responsible for a particular aspect of detector performance or analysis. The plugin architecture reflects this organizational structure by allowing distinct contributions to be integrated smoothly into the larger data processing pipeline.
 
@@ -264,13 +264,13 @@ It is the only component of the data analysis pipeline that remains private with
 
 Cutax is built upon the Straxen interface and is the software used by most of our collaborators for data analysis. Cutax’s plugin structure allows analysts to apply or modify cuts reproducibly across different analyses. An example of such cuts is the fiducial volume cut. Background events are expected to cluster near the edges of the TPC due to radioactive contamination from detector materials. As such, this data introduces too many background interaction that negatively affect our signal to noise ratio. We use Neural Networks and the time difference between the S1 and S2 of an event to reconstruct its position. Using this information we can simply exclude all data within a few cm of the detector walls and the bottom PMT array, resulting in a fiducial volume cut. These data quality cuts drastically reduce the data volume: for SR0, only 134 candidate events remained after cuts, corresponding to less than 1\,GB of data \cite{PhysRevLett.131.041003}. 
 
-\subsection{Metadata Management with xedocs}
+\subsection{Metadata Management with Xedocs}
 
 As the experiment evolved over time, the need for a robust and flexible corrections data management system became apparent. Xedocs is our new corrections management software, replacing the previous CMT. I contributed to the development of Xedocs by testing the software, identifying bugs, and writing unit tests. Shortly after Xedocs was deployed, I took over responsibility for managing the collaboration’s corrections data, including ongoing maintenance and extending Xedocs to support new types of corrections as they became necessary.
 
 Xedocs has several compatible backends; however, the XENON collaboration mainly relies on MongoDB for storage of corrections data. However, not all data can be stored in MongoDB due to its file size limitations. In such cases, we upload the file to a GitHub repository and store a reference to it (e.g. filename) in MongoDB where we can use URL protocols to retrieve and format the data.
 
-\subsubsection*{Corrections data upload procedure}
+\subsubsection*{Metadata Upload Procedure}
 
 Suppose a new analyst in XENONnT wants to produced a new cut or changed our data processing pipeline, but to integrate these changes you need to compute a new correction factor, $\alpha$, which may be the result of a neural network or another complex computation. After presenting their new correction to other analysts, we begin the procedure of creating a new schema in xedocs to represent this data. The first step is identifying the type of correction you need, a comprehensive list of available correction types and their corresponding base classes is provided in ref. \pageref{xedocs_paper}. After selecting the appropriate parent class they can build their own class which inherits from the parent class and add any additional indexing or metadata required for your use case.
 
@@ -307,13 +307,13 @@ database.
 
 The XEDOCS system described above provides the infrastructure that allows our \acrshort{csom} classification parameters to be versioned and tracked alongside all other detector corrections. This ensures that our classification improvements can be systematically deployed across the collaboration while maintaining strict reproducibility requirements essential for physics analysis.
 
-\subsection{Cloud Storage Support: S3 Backend for strax}
+\subsection{Cloud Storage Support: S3 Backend for Strax}
 
 %This is mainly a pitch to XLZD, where I just have to sell them in why S3 is better than Rucio at least for the frontend?
 
 As previously mentioned, the current data management system used by the XENONnT collaboration is Rucio. The framework enables data distribution across global locations and heterogeneous data centres. Rucio has demonstrated its performance at scale, for example in ATLAS, it manages over 1 exabyte of data across 120+ global sites, handling over 1 billion files with 4+ exabytes of annual transfers \cite{rucio_home}. In recent years, there have been attempts to enable Rucio to work with private and commercially available cloud storage systems; however, none of the integrations were seamless. With AWS S3 buckets in particular, conflicts began when Amazon updated its Custom Certificate Authority to manage security certificates which made it incompatible with Rucio \cite{Barisits2024}. In XENONnT, we decided to take a different approach; instead of integrating S3 compatibility into Rucio, we simply use the S3 buckets as an entirely separate system. But before that, we need to understand what an S3 bucket is.
 
-\subsubsection{What are S3 buckets}
+\subsubsection{What are S3 Buckets}
 
 % show a few lines of code on how it works
 
@@ -333,7 +333,7 @@ Furthermore, from an educational standpoint, physicists working with S3 will dev
 
 Since we want to be able to take advantage of emerging technologies, I worked on creating a backed for Strax to work with S3 buckets. While it is too late to restructure Strax storage system from scratch, we can offer capabilities to access more commercially used and well supported backends such as S3 for accessing higher level processed data.
 
-\subsubsection*{Context and storage} 
+\subsubsection*{Context and Storage} 
 
 Strax(en) does not currently have the functionality to automatically download data needed form Rucio RSEs, instead the data needs to be manually downloaded either using the rucio API or Admix, a wrapper around rucio designed for the XENON collaboration. Once the data is downloaded locally we can specify a path and strax(en) will search from data in the default directories and this newly added path. 
 
