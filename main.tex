@@ -147,11 +147,36 @@
     \vspace*{0.5cm}
     
     \huge\bfseries
-    PhD Thesis\\
+     Advancing Dark Matter Detection: Self-Organizing Maps for Signal Classification in Xenon TPCs \\
     
     \vspace*{0.5cm}
 
     \Large Luis Sanchez \\
+
+    \vspace{2cm} % Adjust spacing as needed
+    \normalsize 
+
+    \begin{flushleft}
+    \noindent\textbf{Thesis Committee:}
+    
+    \vspace{1.5cm}
+    
+    \noindent\rule{8cm}{0.4pt}\\
+    Dr. Christopher Tunnell (Chair)\\
+    Associate Professor of Physics and Astronomy
+    
+    \vspace{1.2cm}
+    
+    \noindent\rule{8cm}{0.4pt}\\
+    Dr. Erzsébet Merényi\\
+    Research Professor of Statistics
+
+    \vspace{1.2cm}
+    
+    \noindent\rule{8cm}{0.4pt}\\
+    Dr. Aaron Higuera Pichardo\\
+    Assistant Research Professor of Physics and Astronomy
+    \end{flushleft}
     
     \vspace*{\fill}
     
@@ -176,7 +201,11 @@
 \newpage
 
 \begin{abstract}
-In progress.
+Dark matter constitutes approximately 27\% of the universe's mass-energy content, yet its particle nature remains unknown. Weakly Interacting Massive Particles (WIMPs) represent a theoretically well-motivated candidate, and dual-phase liquid xenon time projection chambers (TPCs) such as XENONnT are among the most sensitive instruments for their direct detection. Accurate classification of scintillation (S1) and ionization (S2) signals is fundamental to these searches, as misclassification increases background rates and reduces sensitivity to rare WIMP-nucleon interactions.           
+   
+This thesis develops and validates a Self-Organizing Map (SOM)-based approach for signal classification in xenon TPC experiments. Using Conscience SOMs (CSOMs), an unsupervised neural network that preserves topological relationships in high-dimensional data, we trained classifiers on XENONnT calibration and background data. The SOM-aided classification reduced misclassified single electrons by 50\% and misclassified S1 signals by approximately 30\% compared to the previous algorithm, directly decreasing the accidental coincidence background critical to low-energy physics searches including WIMP detection and solar neutrino measurements.                                    
+Beyond classification improvement, the SOM analysis identified 22 distinct signal clusters, revealing detector artifacts, multi-scatter events, and gas-phase interactions that inform data quality cuts and detector characterization. We validated the generalizability of this approach on XAMS, a    smaller R&D detector at Nikhef, demonstrating that SOM-based methods successfully identify signal types across different xenon TPC implementations. Additionally, we developed sciSOM, an open-source Python package for CSOM training and visualization, and contributed to xedocs, a metadata management system ensuring data integrity across XENONnT science runs.                                         
+This work establishes unsupervised neural networks as robust tools for signal classification in rare-event searches, with direct applicability to next-generation experiments such as XLZD. 
 \end{abstract}
 
 %\setcounter{chapter}{18}
